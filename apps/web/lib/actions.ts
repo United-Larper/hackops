@@ -73,3 +73,21 @@ export async function saveTeam(id: string, team: Assignment[]) {
 export async function addNote(id: string, text: string, memberId: string | null) {
   return write(() => api(`${hack(id)}/notes`, { method: "POST", body: JSON.stringify({ text, memberId }) }), "The note didn't save.");
 }
+
+export async function linkProject(id: string, projectId: string | null) {
+  return write(() => api(hack(id), { method: "PATCH", body: JSON.stringify({ projectId }) }), "The project wasn't linked.");
+}
+
+/** Create a project and link it to this hackathon in one go. */
+export async function createProject(id: string, name: string, repoUrl: string | null) {
+  return write(async () => {
+    const p = await api<{ id: string }>("/projects", { method: "POST", body: JSON.stringify({ name, repoUrl }) });
+    await api(hack(id), { method: "PATCH", body: JSON.stringify({ projectId: p.id }) });
+  }, "The project wasn't created.");
+}
+
+export type ProjectLinks = { repoUrl: string | null; demoUrl: string | null; videoUrl: string | null; slidesUrl: string | null; devpostUrl: string | null };
+
+export async function saveProjectLinks(projectId: string, links: ProjectLinks) {
+  return write(() => api(`/projects/${encodeURIComponent(projectId)}`, { method: "PATCH", body: JSON.stringify(links) }), "The links didn't save.");
+}
