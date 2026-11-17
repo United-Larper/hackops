@@ -91,3 +91,15 @@ export type ProjectLinks = { repoUrl: string | null; demoUrl: string | null; vid
 export async function saveProjectLinks(projectId: string, links: ProjectLinks) {
   return write(() => api(`/projects/${encodeURIComponent(projectId)}`, { method: "PATCH", body: JSON.stringify(links) }), "The links didn't save.");
 }
+
+export type Retro = { result: HackathonResult | null; resultNote: string | null; retroWentWell: string | null; retroToChange: string | null };
+
+/** Save the retro; a new or changed result moves the hackathon to Results through the stage endpoint. */
+export async function saveRetro(id: string, stage: Stage, current: HackathonResult | null, { result, ...text }: Retro) {
+  return write(async () => {
+    await api(hack(id), { method: "PATCH", body: JSON.stringify(text) });
+    if (result && (stage !== "results" || result !== current)) {
+      await api(`${hack(id)}/stage`, { method: "POST", body: JSON.stringify({ stage: "results", result }) });
+    }
+  }, "The retro didn't save.");
+}
