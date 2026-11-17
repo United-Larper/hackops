@@ -69,3 +69,7 @@ export async function saveTeam(id: string, team: Assignment[]) {
     await api(hack(id), { method: "PATCH", body: JSON.stringify({ ownerId: owner }) });
   }, "The team didn't save.");
 }
+
+export async function addNote(id: string, text: string, memberId: string | null) {
+  return write(() => api(`${hack(id)}/notes`, { method: "POST", body: JSON.stringify({ text, memberId }) }), "The note didn't save.");
+}
