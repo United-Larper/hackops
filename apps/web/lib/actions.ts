@@ -25,3 +25,35 @@ export async function moveCard(id: string, stage: Stage, opts: { result?: Hackat
   refresh();
   return {};
 }
+
+const hack = (id: string) => `/hackathons/${encodeURIComponent(id)}`;
+
+/** Run one API write, refresh the page on success, and turn a failure into a message. */
+async function write(fn: () => Promise<unknown>, failed: string): Promise<MoveResult> {
+  try {
+    await fn();
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : failed };
+  }
+  refresh();
+  return {};
+}
+
+/** A date input's YYYY-MM-DD as the end of that day in Malaysia time, or null when cleared. */
+const dueAt = (day: string | null | undefined) => (day ? `${day}T23:59:00+08:00` : null);
+
+export type TaskFields = { title?: string; status?: "todo" | "doing" | "done"; assigneeId?: string | null; due?: string | null };
+const taskBody = ({ due, ...rest }: TaskFields) => JSON.stringify({ ...rest, ...(due !== undefined && { dueAt: dueAt(due) }) });
+
+export async function addTask(id: string, fields: TaskFields) {
+  return write(() => api(`${hack(id)}/tasks`, { method: "POST", body: taskBody(fields) }), "The task didn't save.");
+}
+
+/** Only the fields passed change. */
+export async function updateTask(id: string, taskId: string, fields: TaskFields) {
+  return write(() => api(`${hack(id)}/tasks/${encodeURIComponent(taskId)}`, { method: "PATCH", body: taskBody(fields) }), "The task didn't save.");
+}
+
+export async function deleteTask(id: string, taskId: string) {
+  return write(() => api(`${hack(id)}/tasks/${encodeURIComponent(taskId)}`, { method: "DELETE" }), "The task wasn't removed.");
+}
