@@ -1,0 +1,16 @@
+{
+  "name": "hackops",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @hackops/shared build && pnpm --parallel --filter @hackops/shared --filter web --filter api run dev",
+    "build": "pnpm --filter @hackops/shared build && pnpm --filter api --filter web build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "check": "pnpm --filter @hackops/shared build && pnpm typecheck && pnpm test"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.34.7"
+}

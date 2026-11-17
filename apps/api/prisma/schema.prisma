@@ -1,0 +1,11 @@
+// Models arrive in phase 02 (docs/phases/02-core-data-and-api.md).
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
