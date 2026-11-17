@@ -99,6 +99,41 @@ describe("hackathons", () => {
   });
 });
 
+describe("board", () => {
+  const stage = (id: string, body: object) => http().post(`/hackathons/${id}/stage`).send(body).expect(200);
+
+  it("groups cards by stage with progress and next deadline; filters; skipped only on request", async () => {
+    const a = await create({ ...KL, ownerId: undefined });
+    const b = await create({ title: "Remote Hack", url: "https://example.com/r", mode: "online" });
+    const c = await create({ ...KL, title: "Skip me" });
+    await create({ ...KL, title: "Still discovered" });
+    await stage(a.id, { stage: "registered" });
+    await http().patch(`/hackathons/${a.id}`).send({ ownerId: "m1" }).expect(200);
+    const tasks = (await http().get(`/hackathons/${a.id}`)).body.tasks;
+    await http().patch(`/hackathons/${a.id}/tasks/${tasks[0].id}`).send({ status: "done" }).expect(200);
+    await stage(b.id, { stage: "interested" });
+    await stage(c.id, { stage: "skipped" });
+
+    const board = (await http().get("/hackathons/board").expect(200)).body;
+    expect(Object.keys(board)).toEqual(["interested", "registered", "building", "submitted", "results"]);
+    expect(board.registered).toHaveLength(1);
+    expect(board.registered[0]).toMatchObject({
+      title: "KL AI Hack",
+      owner: { name: "Aina" },
+      progress: { done: 1, total: tasks.length },
+      nextDeadline: { kind: "submission", at: "2030-01-10T10:00:00.000Z" },
+    });
+    expect(board.interested[0]).toMatchObject({ title: "Remote Hack", nextDeadline: null, progress: { done: 0, total: 0 } });
+
+    const online = (await http().get("/hackathons/board?mode=online").expect(200)).body;
+    expect([online.interested.length, online.registered.length]).toEqual([1, 0]);
+    expect((await http().get("/hackathons/board?owner=m1").expect(200)).body.interested).toHaveLength(0);
+    expect((await http().get("/hackathons/board?week=1").expect(200)).body.registered).toHaveLength(0);
+    expect((await http().get("/hackathons/board?skipped=1").expect(200)).body.skipped).toMatchObject([{ title: "Skip me" }]);
+    await http().get("/hackathons/board?mode=space").expect(400);
+  });
+});
+
 describe("members, projects, team", () => {
   it("create and validate", async () => {
     const m = (await http().post("/members").send({ name: "Harish", skills: ["Flutter"], preferredRoles: ["developer"] }).expect(201)).body;

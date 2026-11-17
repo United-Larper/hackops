@@ -1,5 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from "@nestjs/common";
 import {
+  BOARD_STAGES,
+  BoardQuery,
+  type BoardDto,
   HackathonInput,
   HackathonPatch,
   HackathonQuery,
@@ -8,6 +11,9 @@ import {
   TaskInput,
   TaskPatch,
   TeamAssignmentsInput,
+  nextDeadline,
+  progressOf,
+  type Region,
 } from "@hackops/shared";
 import { ZodPipe } from "./common/zod.pipe";
 import type { Prisma } from "./generated/prisma/client";
@@ -23,6 +29,13 @@ const LABELS: Record<string, string> = {
   ownerId: "owner", projectId: "linked project", decisionNote: "decision note", resultNote: "result note",
   retroWentWell: "retro", retroToChange: "retro",
 };
+
+function regionWhere(region?: Region): Prisma.HackathonWhereInput {
+  if (region === "online") return { mode: "online" };
+  if (region === "malaysia") return { mode: { not: "online" }, country: "Malaysia" };
+  if (region === "overseas") return { mode: { not: "online" }, OR: [{ country: null }, { country: { not: "Malaysia" } }] };
+  return {};
+}
 
 function writeData(body: HackathonPatch) {
   const { categories, prizeTracks, source, sourceId, ...rest } = body;
@@ -43,9 +56,7 @@ export class HackathonsController {
       ...(q.stage && { stage: q.stage }),
       ...(q.category && { categories: { some: { slug: q.category } } }),
       ...(q.q && { title: { contains: q.q } }),
-      ...(q.region === "online" && { mode: "online" }),
-      ...(q.region === "malaysia" && { mode: { not: "online" }, country: "Malaysia" }),
-      ...(q.region === "overseas" && { mode: { not: "online" }, OR: [{ country: null }, { country: { not: "Malaysia" } }] }),
+      ...regionWhere(q.region),
     };
     const [rows, team] = await Promise.all([
       this.db.hackathon.findMany({ where, include: HACKATHON_INCLUDE, orderBy: { createdAt: "desc" } }),
@@ -67,6 +78,36 @@ export class HackathonsController {
       dtos.sort((a, b) => t(a) - t(b));
     }
     return dtos;
+  }
+
+  @Get("board")
+  async board(@Query(new ZodPipe(BoardQuery)) q: BoardQuery): Promise<BoardDto> {
+    const stages = q.skipped ? [...BOARD_STAGES, "skipped" as const] : BOARD_STAGES;
+    const where: Prisma.HackathonWhereInput = {
+      stage: { in: [...stages] },
+      ...(q.category && { categories: { some: { slug: q.category } } }),
+      ...(q.owner && { ownerId: q.owner }),
+      ...regionWhere(q.region),
+      // Region and mode both constrain mode, so they combine with AND.
+      ...(q.mode && { AND: [{ mode: { in: [q.mode, "hybrid"] } }] }),
+    };
+    const [rows, team] = await Promise.all([
+      this.db.hackathon.findMany({
+        where,
+        include: { ...HACKATHON_INCLUDE, tasks: { select: { status: true } } },
+        orderBy: { updatedAt: "desc" },
+      }),
+      fitTeam(this.db),
+    ]);
+    const now = new Date();
+    const week = now.getTime() + 7 * 86_400_000;
+    const board = Object.fromEntries(stages.map((s) => [s, []])) as unknown as BoardDto;
+    for (const { tasks, ...h } of rows) {
+      const card = { ...toHackathonDto(h, team, now), progress: progressOf(tasks), nextDeadline: nextDeadline({ ...h, stage: h.stage as never }, now) };
+      if (q.week && (!card.nextDeadline || new Date(card.nextDeadline.at).getTime() > week)) continue;
+      board[card.stage as keyof BoardDto]!.push(card);
+    }
+    return board;
   }
 
   @Post()

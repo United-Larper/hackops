@@ -5,3 +5,4 @@ export * from "./dto";
 export * from "./task-template";
 export * from "./discovery";
 export * from "./fit";
+export * from "./board";
