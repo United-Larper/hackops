@@ -116,7 +116,7 @@ function TaskCard({ t, onMove, onEdit }: { t: TaskDto; onMove: (to: TaskStatus) 
         e.dataTransfer.setData(DRAG, t.id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      className="flex cursor-grab flex-col gap-2 rounded-lg border border-line bg-panel p-3 transition-colors hover:border-line-strong active:cursor-grabbing"
+      className="relative flex cursor-grab flex-col gap-2 rounded-lg border border-line bg-panel p-3 transition-colors hover:border-line-strong active:cursor-grabbing"
     >
       <button onClick={onEdit} draggable={false} className={`text-left text-[15px] leading-snug font-semibold hover:underline ${done ? "text-muted line-through decoration-1" : ""}`}>
         {t.title}
@@ -125,7 +125,7 @@ function TaskCard({ t, onMove, onEdit }: { t: TaskDto; onMove: (to: TaskStatus) 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
         {t.assignee ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="grid size-6 place-items-center rounded-full bg-rail font-display text-[11px] font-bold text-rail-strong" aria-hidden>
+            <span className="grid size-6 place-items-center rounded-full bg-rail font-display text-xs font-bold text-rail-strong" aria-hidden>
               {initials(t.assignee.name)}
             </span>
             {t.assignee.name.split(" ")[0]}

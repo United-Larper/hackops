@@ -109,24 +109,30 @@ function Lifecycle({ stage }: { stage: Stage }) {
   const now = CURRENT[stage];
   const first = now[0] ?? -1;
   return (
-    <ol aria-label="Lifecycle" className="flex w-full max-w-xl gap-1 md:ml-auto md:w-auto md:flex-1">
-      {PHASES.map((p, i) => {
-        const state = now.includes(i) ? "now" : i < first ? "done" : "next";
-        return (
-          <li key={p} className="min-w-0 flex-1" aria-current={state === "now" ? "step" : undefined}>
-            <span className={`block h-1 rounded-full ${state === "now" ? "bg-text" : state === "done" ? "bg-muted" : "bg-line"}`} />
-            <span
-              className={`mt-1.5 flex items-center gap-1 truncate font-display text-[13px] font-bold tracking-[0.05em] uppercase ${
-                state === "now" ? "text-text" : "text-muted"
-              }`}
-            >
-              {state === "done" && <Icon name="check" size={12} />}
-              {p}
-            </span>
-          </li>
-        );
-      })}
-      {stage === "skipped" && <li className="self-end text-xs text-muted">Skipped</li>}
-    </ol>
+    <div className="w-full max-w-xl md:ml-auto md:w-auto md:flex-1">
+      <ol aria-label="Lifecycle" className="flex gap-1">
+        {PHASES.map((p, i) => {
+          const state = now.includes(i) ? "now" : i < first ? "done" : "next";
+          return (
+            <li key={p} className="min-w-0 flex-1" aria-current={state === "now" ? "step" : undefined}>
+              <span className={`block h-1 rounded-full ${state === "now" ? "bg-text" : state === "done" ? "bg-muted" : "bg-line"}`} />
+              <span
+                className={`mt-1.5 flex items-center gap-1 truncate font-display text-[13px] font-bold tracking-[0.05em] uppercase max-sm:sr-only ${
+                  state === "now" ? "text-text" : "text-muted"
+                }`}
+              >
+                {state === "done" && <Icon name="check" size={12} />}
+                {p}
+              </span>
+            </li>
+          );
+        })}
+        {stage === "skipped" && <li className="self-end text-xs text-muted max-sm:hidden">Skipped</li>}
+      </ol>
+      {/* Phones: the five labels don't fit under their bars, so name the current phase once. */}
+      <p aria-hidden className="mt-1.5 font-display text-[13px] font-bold tracking-[0.05em] uppercase sm:hidden">
+        {now.length ? now.map((i) => PHASES[i]).join(" · ") : "Skipped"}
+      </p>
+    </div>
   );
 }
