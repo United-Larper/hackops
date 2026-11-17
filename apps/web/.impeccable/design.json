@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T22:40:00+08:00",
+  "title": "Design System: HackOps",
+  "extensions": {
+    "colorMeta": {
+      "matchday-ink": { "role": "primary", "displayName": "Matchday Ink", "canonical": "#0e0e0c", "tonalRamp": ["#0e0e0c", "#1d1d1a", "#2c2c28", "#45453f", "#5a5a53", "#8f8f87", "#d4d4cc", "#f4f4f1"] },
+      "tiger-gold": { "role": "primary", "displayName": "Tiger Gold", "canonical": "#f4c21b", "tonalRamp": ["#3d2f00", "#5e4800", "#806200", "#a88200", "#d1a400", "#f4c21b", "#f8d867", "#fcefc0"] },
+      "signal-red": { "role": "secondary", "displayName": "Signal Red", "canonical": "#ff4d2e", "tonalRamp": ["#3d0b02", "#661406", "#8f1e0b", "#c22e13", "#e93d1e", "#ff4d2e", "#ff8a73", "#ffd2c9"] },
+      "result-green": { "role": "secondary", "displayName": "Result Green", "canonical": "#157a43", "tonalRamp": ["#05241a", "#0a3d22", "#0f5730", "#157a43", "#1fa35b", "#4cc683", "#93dfb4", "#d6f4e3"] },
+      "graphite": { "role": "secondary", "displayName": "Graphite", "canonical": "#3a3a35" },
+      "touchline-white": { "role": "neutral", "displayName": "Touchline White", "canonical": "#f4f4f1" },
+      "panel-white": { "role": "neutral", "displayName": "Panel White", "canonical": "#ffffff" },
+      "chalk-grey": { "role": "neutral", "displayName": "Chalk Grey", "canonical": "#ecece6" },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#deded6" },
+      "scoreboard-black": { "role": "neutral", "displayName": "Scoreboard Black", "canonical": "#141412" },
+      "bench-grey": { "role": "neutral", "displayName": "Bench Grey", "canonical": "#5a5a53" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles." },
+      "headline": { "displayName": "Headline", "purpose": "Empty-state titles and work-area section headings." },
+      "clock": { "displayName": "Clock", "purpose": "The match clock and other countdowns." },
+      "label": { "displayName": "Label", "purpose": "Board column headings and the fixtures heading, uppercase." },
+      "title": { "displayName": "Title", "purpose": "Card and row titles." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, notes, empty-state text." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "clock-tick", "value": "1s step", "purpose": "The match clock updates once a second; no easing, no animation." },
+      { "name": "state-fade", "value": "150ms ease-out", "purpose": "Colour changes on hover; removed under prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "One per page, top right of the title row.",
+      "html": "<button class=\"ds-btn-primary\">Add hackathon</button>",
+      "css": ".ds-btn-primary{background:#0e0e0c;color:#f4c21b;border:0;border-radius:6px;padding:10px 16px;font:600 14px Barlow,system-ui,sans-serif;cursor:pointer;transition:background .15s ease-out}.ds-btn-primary:hover{background:#1d1d1a}.ds-btn-primary:focus-visible{outline:2px solid #141412;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action.",
+      "html": "<button class=\"ds-btn-secondary\">Skip</button>",
+      "css": ".ds-btn-secondary{background:#fff;color:#141412;border:1px solid #deded6;border-radius:6px;padding:10px 16px;font:600 14px Barlow,system-ui,sans-serif;cursor:pointer}.ds-btn-secondary:hover{background:#ecece6}.ds-btn-secondary:focus-visible{outline:2px solid #141412;outline-offset:2px}"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Filters in the title row.",
+      "html": "<button class=\"ds-chip\">Due this week</button>",
+      "css": ".ds-chip{background:#fff;color:#141412;border:1px solid #deded6;border-radius:9999px;padding:6px 14px;font:500 14px Barlow,system-ui,sans-serif;cursor:pointer}.ds-chip:hover{border-color:#141412}.ds-chip:focus-visible{outline:2px solid #141412;outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Inputs always carry a visible label.",
+      "html": "<label class=\"ds-field\">Hackathon link<input placeholder=\"https://devpost.com/…\"></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:4px;font:500 14px Barlow,system-ui,sans-serif;color:#141412}.ds-field input{background:#fff;border:1px solid #deded6;border-radius:6px;padding:8px 12px;font:400 15px Barlow,system-ui,sans-serif}.ds-field input:focus-visible{outline:2px solid #141412;outline-offset:2px}"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Ink rail with a gold active pill.",
+      "html": "<nav class=\"ds-rail\"><a href=\"#\">Discover</a><a href=\"#\" aria-current=\"page\">Board</a><a href=\"#\">Team</a></nav>",
+      "css": ".ds-rail{background:#0e0e0c;padding:16px;display:flex;flex-direction:column;gap:4px;width:220px}.ds-rail a{color:#d4d4cc;text-decoration:none;padding:10px;border-radius:6px;font:500 15px Barlow,system-ui,sans-serif}.ds-rail a:hover{background:#1d1d1a;color:#f4f4f1}.ds-rail a[aria-current=page]{background:#f4c21b;color:#0e0e0c;font-weight:600}.ds-rail a:focus-visible{outline:2px solid #f4c21b;outline-offset:2px}"
+    },
+    {
+      "name": "Fixtures Panel",
+      "kind": "custom",
+      "refersTo": "fixtures-panel",
+      "description": "This week's deadlines as fixtures; rows due within 24 hours in signal red.",
+      "html": "<section class=\"ds-fix\"><h2>This week’s fixtures</h2><div class=\"r hot\"><b>WED 19</b><b class=\"t\">23:59</b><span>Selangor Smart City Hack</span><b class=\"t\">3h 41m</b></div><div class=\"r\"><b>FRI 21</b><b class=\"t\">15:00</b><span>Global AI Agents Challenge</span><b class=\"t\">2d 18h</b></div></section>",
+      "css": ".ds-fix{background:#0e0e0c;color:#f4f4f1;border-radius:10px;padding:12px 20px;font:400 15px Barlow,system-ui,sans-serif}.ds-fix h2{margin:0 0 4px;font:700 17px 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#f4c21b}.ds-fix .r{display:grid;grid-template-columns:80px 80px 1fr 90px;gap:12px;align-items:center;border-top:1px solid #2c2c28;padding:8px 0;font-variant-numeric:tabular-nums}.ds-fix b{font:700 20px 'Barlow Condensed',sans-serif}.ds-fix .hot .t{color:#ff4d2e}.ds-fix .r b:last-child{text-align:right}"
+    },
+    {
+      "name": "Match Clock",
+      "kind": "custom",
+      "refersTo": "fixtures-panel",
+      "description": "The live countdown on whatever is in Building.",
+      "html": "<div class=\"ds-clock\"><time>66:12:08</time><span>Live · to submission</span></div>",
+      "css": ".ds-clock{background:#0e0e0c;padding:14px;border-radius:10px;display:flex;align-items:baseline;gap:8px;color:#ff4d2e}.ds-clock time{font:800 30px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}.ds-clock span{font:600 12px Barlow,sans-serif;letter-spacing:.08em;text-transform:uppercase}"
+    },
+    {
+      "name": "Form Guide",
+      "kind": "custom",
+      "refersTo": "tag-category",
+      "description": "Recent results as W / F / P squares.",
+      "html": "<ol class=\"ds-form\"><li class=\"w\">W</li><li class=\"p\">P</li><li class=\"f\">F</li></ol>",
+      "css": ".ds-form{display:flex;gap:4px;list-style:none;margin:0;padding:0}.ds-form li{width:22px;height:22px;display:grid;place-items:center;border-radius:3px;font:700 13px 'Barlow Condensed',sans-serif}.ds-form .w{background:#157a43;color:#fff}.ds-form .f{background:#f4c21b;color:#0e0e0c}.ds-form .p{background:#3a3a35;color:#e5e5de}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Matchday",
+    "overview": "HackOps treats a hackathon season like a football season. Every deadline is a fixture with a kick-off time in Malaysia time; whatever the team is building runs a live match clock; every result goes into a form guide. The shell wears Harimau Malaya colours, an ink-black rail and tiger gold, so the identity lives in the frame while the work area stays a calm, neutral ground for dense lists and boards.",
+    "keyCharacteristics": [
+      "Ink rail and gold active state carry the identity; the work area stays neutral.",
+      "Time is set in condensed tabular numerals, always in MYT.",
+      "Signal red belongs only to the live clock and anything due within 24 hours.",
+      "Flat surfaces, hairline borders, no drop shadows.",
+      "Icons are Phosphor bold SVG files, never a React icon package."
+    ],
+    "rules": [
+      { "name": "The Reserved Red Rule", "body": "Signal red marks only the live match clock and deadlines due within 24 hours. If something is red, it is urgent; nothing decorative, no error styling, no brand use.", "section": "colors" },
+      { "name": "The Frame Not Fill Rule", "body": "Ink and gold live in the shell (rail, fixtures, primary action, active state). The work area stays neutral so the data reads first.", "section": "colors" },
+      { "name": "The Condensed For Time Rule", "body": "Any number a person scans to decide something (a time, a date, a countdown, a count, a score) is set in Barlow Condensed. Sentences are never condensed.", "section": "typography" },
+      { "name": "The No Shadow Rule", "body": "Surfaces separate by colour and hairlines, never by box-shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do set every time in Malaysia time and in condensed tabular numerals.",
+      "Do keep ink and gold in the shell and the work area neutral.",
+      "Do use Phosphor bold SVGs from public/icons through the Icon component.",
+      "Do give every empty page a dashed empty state saying what will appear and where it comes from.",
+      "Do keep keyboard paths for anything draggable (board cards, tasks)."
+    ],
+    "donts": [
+      "Don't use Signal Red for anything except the live clock and deadlines due within 24 hours.",
+      "Don't add drop shadows, gradients, glass or blur.",
+      "Don't add football costume: pitches, grass, crests, jerseys, stadium photos.",
+      "Don't install a React icon library or use emoji or Unicode glyphs as icons.",
+      "Don't put a small label or eyebrow above a heading; the heading speaks for itself.",
+      "Don't put gold text on the light ground; gold only sits on ink or behind ink text."
+    ]
+  }
+}

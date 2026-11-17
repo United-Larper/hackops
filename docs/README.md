@@ -58,10 +58,10 @@ Concretely:
 - [x] 0.5 Public repo on GitHub and first push
 
 ### 01 Design system and shell
-- [ ] 1.1 Reference sites studied, direction written down
-- [ ] 1.2 Tokens, type, colour, light and dark
-- [ ] 1.3 Logo and icon set imported as SVG
-- [ ] 1.4 App shell: navigation, page header, empty states
+- [x] 1.1 Reference sites studied, direction written down
+- [x] 1.2 Tokens, type, colour, light and dark
+- [x] 1.3 Logo and icon set imported as SVG
+- [x] 1.4 App shell: navigation, page header, empty states
 
 ### 02 Core data and API
 - [ ] 2.1 Prisma schema and migration
