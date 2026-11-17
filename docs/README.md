@@ -78,9 +78,9 @@ Concretely:
 - [x] 3.5 Discover screen
 
 ### 04 Pipeline board
-- [ ] 4.1 Board endpoint
-- [ ] 4.2 Board screen with drag to move
-- [ ] 4.3 Filters and go/no-go
+- [x] 4.1 Board endpoint
+- [x] 4.2 Board screen with drag to move
+- [x] 4.3 Filters and go/no-go
 
 ### 05 Hackathon workspace
 - [ ] 5.1 Workspace layout and overview
