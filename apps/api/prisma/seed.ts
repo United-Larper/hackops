@@ -17,7 +17,7 @@ const CATEGORIES = [
   ["fintech", "FinTech", ["fintech", "finance", "payments", "banking", "insurtech"]],
   ["healthtech", "HealthTech", ["health", "medical", "healthcare", "wellbeing"]],
   ["sustainability", "Sustainability", ["climate", "sustainability", "green", "energy", "environment", "esg"]],
-  ["edtech", "EdTech", ["education", "edtech", "learning", "students"]],
+  ["edtech", "EdTech", ["education", "edtech", "e-learning", "teaching", "school"]],
   ["gaming", "Gaming", ["game", "gaming", "unity", "unreal"]],
   ["smart-city", "Smart City", ["smart city", "mobility", "transport", "iot", "urban"]],
   ["open", "Open theme", ["open theme", "open innovation", "any track"]],
@@ -67,6 +67,8 @@ type Seed = {
 const HACKATHONS: Seed[] = [
   { key: "tokyo-robotics", title: "Tokyo Robotics Open", organizer: "Robotics Society", mode: "in_person", city: "Tokyo", country: "Japan", stage: "discovered", categories: ["ai-ml"], registrationClosesAt: days(20), startsAt: days(34), endsAt: days(36), prizeAmount: 1000000, prizeCurrency: "JPY", teamSizeMax: 4 },
   { key: "web3-builders", title: "Web3 Builders Cup", organizer: "Chain Collective", mode: "online", stage: "discovered", categories: ["web3"], registrationClosesAt: days(15), submissionDueAt: days(30), prizeAmount: 25000, prizeCurrency: "USD", teamSizeMax: 5 },
+  { key: "cyberjaya-cloud", title: "Cyberjaya Cloud Hack", organizer: "Cyberjaya Developer Circle", mode: "in_person", city: "Cyberjaya", country: "Malaysia", stage: "discovered", categories: ["ai-ml", "corporate"], registrationClosesAt: days(18), startsAt: days(28), endsAt: days(29), prizeAmount: 25000, prizeCurrency: "MYR", teamSizeMax: 4 },
+  { key: "penang-game-jam", title: "Penang Youth Game Jam", organizer: "Penang Creative Youth", mode: "hybrid", city: "George Town", country: "Malaysia", stage: "discovered", categories: ["gaming", "student"], registrationClosesAt: days(25), startsAt: days(32), endsAt: days(34), prizeAmount: 6000, prizeCurrency: "MYR", teamSizeMax: 5 },
   { key: "borneo-climate", title: "Borneo Climate Jam 2026", organizer: "Sarawak Digital Youth", mode: "in_person", city: "Kuching", country: "Malaysia", stage: "interested", categories: ["sustainability", "student"], registrationClosesAt: days(12), startsAt: days(19), endsAt: days(21), prizeAmount: 15000, prizeCurrency: "MYR", teamSizeMax: 5 },
   { key: "fintech-sprint", title: "FinTech Sprint KL", organizer: "KL Fintech Network", mode: "hybrid", city: "Kuala Lumpur", country: "Malaysia", stage: "interested", categories: ["fintech", "web3"], registrationClosesAt: days(9), startsAt: days(16), endsAt: days(17), prizeAmount: 20000, prizeCurrency: "MYR", teamSizeMax: 4, prizeTracks: [{ name: "Best use of open banking APIs", sponsor: "Demo Bank", prize: "RM 5,000" }, { name: "Best student team", prize: "RM 2,000" }] },
   { key: "selangor-smart-city", title: "Selangor Smart City Hack", organizer: "Selangor Innovation Hub", mode: "in_person", city: "Shah Alam", country: "Malaysia", stage: "registered", categories: ["smart-city", "open"], registrationClosesAt: at(3.7), startsAt: days(11), endsAt: days(12), submissionDueAt: at(12 * 24 + 6), prizeAmount: 30000, prizeCurrency: "MYR", teamSizeMax: 4, owner: "m-aina", decisionNote: "Strong fit for Banjir Watch's data pipeline; close to home.", team: [["m-aina", "lead", true], ["m-weijie", "developer", false]] },

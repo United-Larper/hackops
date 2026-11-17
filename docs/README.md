@@ -71,11 +71,11 @@ Concretely:
 - [x] 2.5 Stage changes, task template, activity log (with tests)
 
 ### 03 Discovery
-- [ ] 3.1 Source fetchers: Devpost, MLH, Malaysian list
-- [ ] 3.2 Dedupe and auto-categories (with tests)
-- [ ] 3.3 Fit score (with tests)
-- [ ] 3.4 Refresh endpoint and daily schedule
-- [ ] 3.5 Discover screen
+- [x] 3.1 Source fetchers: Devpost, MLH, Malaysian list
+- [x] 3.2 Dedupe and auto-categories (with tests)
+- [x] 3.3 Fit score (with tests)
+- [x] 3.4 Refresh endpoint and daily schedule
+- [x] 3.5 Discover screen
 
 ### 04 Pipeline board
 - [ ] 4.1 Board endpoint

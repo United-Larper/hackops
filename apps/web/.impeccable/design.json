@@ -22,6 +22,7 @@
       "clock": { "displayName": "Clock", "purpose": "The match clock and other countdowns." },
       "label": { "displayName": "Label", "purpose": "Board column headings and the fixtures heading, uppercase." },
       "title": { "displayName": "Title", "purpose": "Card and row titles." },
+      "meta": { "displayName": "Meta", "purpose": "Places, organisers, reasons and other metadata, in Bench Grey." },
       "body": { "displayName": "Body", "purpose": "Descriptions, notes, empty-state text." }
     },
     "shadows": [],

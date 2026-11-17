@@ -64,6 +64,11 @@ export const HackathonQuery = z.object({
   category: z.string().optional(),
   region: z.enum(REGIONS).optional(),
   q: z.string().trim().max(200).optional(),
+  /** "1": hide events whose next deadline has passed. */
+  open: z.literal("1").optional(),
+  /** Only events whose next deadline is within this many days. */
+  closesWithin: z.coerce.number().int().min(1).max(365).optional(),
+  sort: z.enum(["fit", "deadline", "created"]).default("created"),
 });
 export type HackathonQuery = z.infer<typeof HackathonQuery>;
 
