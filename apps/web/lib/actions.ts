@@ -28,15 +28,16 @@ export async function moveCard(id: string, stage: Stage, opts: { result?: Hackat
 
 const hack = (id: string) => `/hackathons/${encodeURIComponent(id)}`;
 
-/** Run one API write, refresh the page on success, and turn a failure into a message. */
+/** Run API writes and turn a failure into a message. Refreshes either way, so a half-done write still shows what saved. */
 async function write(fn: () => Promise<unknown>, failed: string): Promise<MoveResult> {
   try {
     await fn();
+    return {};
   } catch (e) {
     return { error: e instanceof ApiError ? e.message : failed };
+  } finally {
+    refresh();
   }
-  refresh();
-  return {};
 }
 
 /** A date input's YYYY-MM-DD as the end of that day in Malaysia time, or null when cleared. */
@@ -56,4 +57,15 @@ export async function updateTask(id: string, taskId: string, fields: TaskFields)
 
 export async function deleteTask(id: string, taskId: string) {
   return write(() => api(`${hack(id)}/tasks/${encodeURIComponent(taskId)}`, { method: "DELETE" }), "The task wasn't removed.");
+}
+
+export type Assignment = { memberId: string; role: "lead" | "developer" | "designer" | "pitch"; accountable: boolean };
+
+/** Replace the hackathon's team; the accountable person becomes its owner (shown on the board and the header). */
+export async function saveTeam(id: string, team: Assignment[]) {
+  const owner = team.find((a) => a.accountable)?.memberId ?? null;
+  return write(async () => {
+    await api(`${hack(id)}/team`, { method: "PUT", body: JSON.stringify(team) });
+    await api(hack(id), { method: "PATCH", body: JSON.stringify({ ownerId: owner }) });
+  }, "The team didn't save.");
 }
