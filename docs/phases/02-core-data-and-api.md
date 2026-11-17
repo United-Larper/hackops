@@ -156,32 +156,40 @@ model Team {
 
 ## Implementation
 
+> **As built (2026-11-17):** done on branch `phase-02-core-data`. Differences from the plan below:
+> - `source` gained a `demo` value; every seeded hackathon uses it so later screens can label demo data.
+> - The seed has three projects (Kedai Kira, Banjir Watch, LearnLah) and eleven hackathons, dated relative to now so deadlines stay live. Run it with `pnpm --filter api db:seed`; `db:reset` wipes and reseeds.
+> - The template has seven tasks (`TASK_TEMPLATE` in `@hackops/shared`); due dates in the past are clamped to now.
+> - Prisma's "not found", "bad reference" and "duplicate" errors become 404, 400 and 409 through one exception filter (`src/common/prisma-errors.filter.ts`).
+> - JSON list columns are parsed in `src/mappers.ts`; the API returns arrays.
+> - Tests run against `prisma/test.db`, rebuilt from the migrations on every run (`test/global-setup.ts`).
+
 ### Task 2.1: Prisma schema and migration
 **Files:** `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/*`.
-- [ ] Add the models above to the phase 00 schema (generator and datasource stay as they are). Run `pnpm --filter api exec prisma migrate dev --name core`.
-- [ ] **Check:** migration applies on a fresh `dev.db`.
-- [ ] **Commit:** `feat(api): core data model`
+- [x] Add the models above to the phase 00 schema (generator and datasource stay as they are). Run `pnpm --filter api exec prisma migrate dev --name core`.
+- [x] **Check:** migration applies on a fresh `dev.db`.
+- [x] **Commit:** `feat(api): core data model`
 
 ### Task 2.2: Shared schemas
 **Files:** `packages/shared/src/enums.ts`, `schemas.ts`, `dto.ts` (`lifecycle.ts` with `STAGES` and `phaseOf` already exists from phase 00).
 **Interfaces:** produces `STAGES`, `ROLES`, `MODES`, `phaseOf(stage)`, the Zod input schemas named `<Thing>Input`, and DTO types named `<Thing>Dto`.
-- [ ] Write them. Test `phaseOf` for every stage.
-- [ ] **Commit:** `feat(shared): enums, schemas, DTOs, lifecycle`
+- [x] Write them. Test `phaseOf` for every stage.
+- [x] **Commit:** `feat(shared): enums, schemas, DTOs, lifecycle`
 
 ### Task 2.3: Seed data
 **Files:** `apps/api/prisma/seed.ts`.
-- [ ] Seed the categories (AI/ML, Web3, FinTech, HealthTech, Sustainability, EdTech, Gaming, Open theme, Student only, Corporate) with keywords, four demo members, the team row, two projects and about eight hackathons across every stage, half in Malaysia.
-- [ ] **Check:** `pnpm --filter api db:seed` runs twice without duplicates.
-- [ ] **Commit:** `feat(api): demo seed`
+- [x] Seed the categories (AI/ML, Web3, FinTech, HealthTech, Sustainability, EdTech, Gaming, Open theme, Student only, Corporate) with keywords, four demo members, the team row, two projects and about eight hackathons across every stage, half in Malaysia.
+- [x] **Check:** `pnpm --filter api db:seed` runs twice without duplicates.
+- [x] **Commit:** `feat(api): demo seed`
 
 ### Task 2.4: REST endpoints
 **Files:** `apps/api/src/hackathons.controller.ts`, `members.controller.ts`, `projects.controller.ts`, `team.controller.ts`, `common/zod.pipe.ts`.
-- [ ] Controllers call Prisma directly (no service layer for plain reads and writes).
-- [ ] **Check:** a supertest per controller for one happy path and one rejected input.
-- [ ] **Commit:** `feat(api): REST endpoints`
+- [x] Controllers call Prisma directly (no service layer for plain reads and writes).
+- [x] **Check:** a supertest per controller for one happy path and one rejected input.
+- [x] **Commit:** `feat(api): REST endpoints`
 
 ### Task 2.5: Stage changes and activity
 **Files:** `apps/api/src/stage.ts`, `packages/shared/src/task-template.ts`.
-- [ ] Moving to `registered` creates the template tasks with due dates counted back from `submissionDueAt`. Moving to `results` requires a `result`. Every change writes an `Activity` row in the same transaction.
-- [ ] **Check:** tests for the template creation, the result rule and the activity row.
-- [ ] **Commit:** `feat(api): stage changes and activity log`
+- [x] Moving to `registered` creates the template tasks with due dates counted back from `submissionDueAt`. Moving to `results` requires a `result`. Every change writes an `Activity` row in the same transaction.
+- [x] **Check:** tests for the template creation, the result rule and the activity row.
+- [x] **Commit:** `feat(api): stage changes and activity log`

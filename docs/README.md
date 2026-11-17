@@ -64,11 +64,11 @@ Concretely:
 - [x] 1.4 App shell: navigation, page header, empty states
 
 ### 02 Core data and API
-- [ ] 2.1 Prisma schema and migration
-- [ ] 2.2 Shared Zod schemas, enums and DTOs
-- [ ] 2.3 Seed data
-- [ ] 2.4 REST endpoints with validation
-- [ ] 2.5 Stage changes, task template, activity log (with tests)
+- [x] 2.1 Prisma schema and migration
+- [x] 2.2 Shared Zod schemas, enums and DTOs
+- [x] 2.3 Seed data
+- [x] 2.4 REST endpoints with validation
+- [x] 2.5 Stage changes, task template, activity log (with tests)
 
 ### 03 Discovery
 - [ ] 3.1 Source fetchers: Devpost, MLH, Malaysian list
