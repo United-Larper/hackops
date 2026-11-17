@@ -6,3 +6,4 @@ export * from "./task-template";
 export * from "./discovery";
 export * from "./fit";
 export * from "./board";
+export * from "./skills";

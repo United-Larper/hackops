@@ -1,0 +1,41 @@
+import type { HackathonDto, ProjectDto } from "@hackops/shared";
+import { EmptyState } from "@/components/shell/page-header";
+import { api } from "@/lib/api";
+import { getWorkspace } from "@/lib/workspace";
+import { LinksForm, PickProject } from "./links";
+
+export default async function LinksTab({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const h = await getWorkspace(id);
+  const [projects, linked] = await Promise.all([
+    h.project ? Promise.resolve([] as ProjectDto[]) : api<ProjectDto[]>("/projects"),
+    // ponytail: counts sharing hackathons from the full list; a projectId filter on GET /hackathons can replace it if the list grows.
+    h.project ? api<HackathonDto[]>("/hackathons") : Promise.resolve([] as HackathonDto[]),
+  ]);
+  const sharedWith = linked.filter((x) => x.projectId === h.projectId && x.id !== h.id).length;
+
+  return (
+    <div className="flex flex-col gap-5">
+      {h.project ? (
+        <section aria-labelledby="project-h" className="flex flex-col gap-3">
+          <div>
+            <h2 id="project-h" className="font-display text-2xl font-bold">{h.project.name}</h2>
+            {h.project.description && <p className="mt-1 max-w-[62ch] text-[15px] text-muted">{h.project.description}</p>}
+            {h.project.tech.length > 0 && (
+              <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Tech">
+                {h.project.tech.map((t) => <li key={t} className="rounded-[3px] bg-panel-2 px-2 py-0.5 text-xs font-medium">{t}</li>)}
+              </ul>
+            )}
+          </div>
+          <LinksForm hackathonId={h.id} project={h.project} sharedWith={sharedWith} />
+        </section>
+      ) : (
+        <PickProject hackathonId={h.id} projects={projects} suggested={`${h.title} entry`} />
+      )}
+      <EmptyState title="Pre-submission check">
+        Before you submit, this will check that the repository, demo and video links work and that the submission covers the judging
+        criteria. It arrives with win intelligence in phase 10.
+      </EmptyState>
+    </div>
+  );
+}

@@ -1,20 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useOptimistic, useRef, useState, useTransition, type DragEvent } from "react";
-import { BOARD_STAGES, RESULTS, type BoardCardDto, type BoardDto, type HackathonResult, type Stage } from "@hackops/shared";
+import { useOptimistic, useState, useTransition, type DragEvent } from "react";
+import { BOARD_STAGES, type BoardCardDto, type BoardDto, type HackathonResult, type Stage } from "@hackops/shared";
 import { Icon } from "@/components/icon";
 import { MatchClock } from "@/components/match-clock";
+import { AskDialog, Menu } from "@/components/stage";
+import { RESULT_META as RESULT, STAGE_NAME as NAME, askFor, type AskKind, type MoveOpts } from "@/lib/stage";
 import { clockTime, countdown, isUrgent, shortDate } from "@/lib/time";
-import { moveCard } from "./actions";
+import { moveCard } from "@/lib/actions";
 
 type Column = (typeof BOARD_STAGES)[number] | "skipped";
 type Move = { id: string; to: Column; result?: HackathonResult };
-type Ask = { card: BoardCardDto; to: "results" | "decide" };
+type Ask = { card: BoardCardDto; kind: AskKind };
 
-const NAME: Record<Column, string> = {
-  interested: "Interested", registered: "Registered", building: "Building", submitted: "Submitted", results: "Results", skipped: "Skipped",
-};
 const HINT: Record<Column, string> = {
   interested: "Picked from Discover. Decide: register or skip.",
   registered: "Team and roles set; the task list starts here.",
@@ -24,12 +23,6 @@ const HINT: Record<Column, string> = {
   skipped: "Skipped hackathons. Drag one back to reconsider it.",
 };
 const DUE: Record<string, string> = { registration: "Registration closes", submission: "Submission due", judging: "Judging" };
-const RESULT = {
-  won: { letter: "W", word: "Won", cls: "bg-won text-on-won" },
-  finalist: { letter: "F", word: "Finalist", cls: "bg-gold text-on-gold" },
-  participated: { letter: "P", word: "Participated", cls: "bg-part text-on-part" },
-} satisfies Record<HackathonResult, unknown>;
-
 // Cards carry their own drag type, so drop zones can tell them apart from text or files without waiting for a re-render.
 const CARD = "application/x-hackops-card";
 
@@ -51,7 +44,7 @@ export function Board({ board }: { board: BoardDto }) {
   const [ask, setAsk] = useState<Ask | null>(null);
   const columns = Object.keys(shown) as Column[];
 
-  function commit(card: BoardCardDto, to: Column, opts: { result?: HackathonResult; note?: string } = {}) {
+  function commit(card: BoardCardDto, to: Column, opts: MoveOpts = {}) {
     setStatus(null);
     startTransition(async () => {
       addMove({ id: card.id, to, result: opts.result });
@@ -64,8 +57,8 @@ export function Board({ board }: { board: BoardDto }) {
   /** Every move, dragged or picked from the menu, passes through here. */
   function request(card: BoardCardDto, to: Column) {
     if (card.stage === to) return;
-    if (to === "results") return setAsk({ card, to: "results" });
-    if (card.stage === "interested" && (to === "registered" || to === "skipped")) return setAsk({ card, to: "decide" });
+    const kind = askFor(card.stage, to);
+    if (kind) return setAsk({ card, kind });
     commit(card, to);
   }
 
@@ -124,7 +117,7 @@ export function Board({ board }: { board: BoardDto }) {
                         if (!id) setOver(null);
                       }}
                       onMove={(to) => request(c, to)}
-                      onDecide={() => setAsk({ card: c, to: "decide" })}
+                      onDecide={() => setAsk({ card: c, kind: "decide" })}
                     />
                   ))}
                   {cards.length === 0 && (
@@ -138,11 +131,13 @@ export function Board({ board }: { board: BoardDto }) {
       </div>
       {ask && (
         <AskDialog
-          ask={ask}
+          kind={ask.kind}
+          title={ask.card.title}
+          decisionNote={ask.card.decisionNote}
           onClose={() => setAsk(null)}
           onConfirm={(to, opts) => {
             setAsk(null);
-            commit(ask.card, to, opts);
+            commit(ask.card, to as Column, opts);
           }}
         />
       )}
@@ -156,8 +151,6 @@ function Card({
   card: BoardCardDto; columns: Column[]; dragging: boolean;
   onDrag: (id: string | null) => void; onMove: (to: Column) => void; onDecide: () => void;
 }) {
-  const menu = useRef<HTMLDivElement>(null);
-  const anchor = `--move-${c.id.replace(/[^\w-]/g, "")}`;
   const due = c.nextDeadline;
   const live = c.stage === "building" && due?.kind === "submission";
   const pct = c.progress.total ? Math.round((c.progress.done / c.progress.total) * 100) : 0;
@@ -177,7 +170,7 @@ function Card({
       }`}
     >
       <div className="flex items-start gap-2.5">
-        <Link href={`/board/${c.id}`} draggable={false} className="min-w-0 flex-1 text-[15px] leading-tight font-semibold text-balance after:absolute after:inset-0 after:rounded-lg hover:underline">
+        <Link href={`/h/${c.id}`} draggable={false} className="min-w-0 flex-1 text-[15px] leading-tight font-semibold text-balance after:absolute after:inset-0 after:rounded-lg hover:underline">
           {c.title}
         </Link>
         {c.result ? (
@@ -247,116 +240,15 @@ function Card({
             Decide
           </button>
         )}
-        <button
-          popoverTarget={`move-${c.id}`}
-          style={{ "--anchor": anchor } as React.CSSProperties}
-          className={`move-button inline-flex min-h-9 ${c.stage === "interested" ? "" : "ml-auto"} items-center gap-1 rounded-md px-2 text-sm font-semibold text-muted transition-colors hover:bg-panel-2 hover:text-text`}
-          aria-label={`Move ${c.title}`}
-        >
-          Move <Icon name="caret-down" size={14} />
-        </button>
-        <div
-          ref={menu}
-          id={`move-${c.id}`}
-          popover="auto"
-          style={{ "--anchor": anchor } as React.CSSProperties}
-          className="move-menu min-w-40 rounded-md border border-line-strong bg-panel p-1 text-text"
-        >
-          <p className="px-2.5 pt-1.5 pb-1 text-xs text-muted">Move to</p>
-          {columns.filter((col) => col !== c.stage).map((col) => (
-            <button
-              key={col}
-              onClick={() => {
-                menu.current?.hidePopover();
-                onMove(col);
-              }}
-              className="flex min-h-9 w-full items-center rounded-md px-2.5 text-left text-sm font-medium hover:bg-panel-2"
-            >
-              {NAME[col]}
-            </button>
-          ))}
-        </div>
+        <Menu
+          id={c.id}
+          label={<>Move <Icon name="caret-down" size={14} /></>}
+          ariaLabel={`Move ${c.title}`}
+          heading="Move to"
+          buttonClass={`text-muted hover:bg-panel-2 hover:text-text ${c.stage === "interested" ? "" : "ml-auto"}`}
+          items={columns.filter((col) => col !== c.stage).map((col) => ({ key: col, label: NAME[col], onSelect: () => onMove(col) }))}
+        />
       </div>
     </li>
-  );
-}
-
-function AskDialog({
-  ask, onClose, onConfirm,
-}: {
-  ask: Ask; onClose: () => void; onConfirm: (to: Column, opts: { result?: HackathonResult; note?: string }) => void;
-}) {
-  const [note, setNote] = useState(ask.card.decisionNote ?? "");
-  const decide = ask.to === "decide";
-
-  return (
-    <dialog
-      ref={(el) => {
-        if (el && !el.open) el.showModal();
-      }}
-      onClose={onClose}
-      aria-labelledby="ask-h"
-      className="m-auto w-[min(440px,calc(100vw-32px))] rounded-[10px] border border-line bg-panel p-5 text-text backdrop:bg-rail/60"
-    >
-      <h2 id="ask-h" className="font-display text-2xl leading-tight font-bold">
-        {decide ? `Enter ${ask.card.title}?` : `How did ${ask.card.title} go?`}
-      </h2>
-      {decide ? (
-        <form
-          method="dialog"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const to = (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") as Column;
-            onConfirm(to, { note });
-          }}
-          className="mt-4 flex flex-col gap-4"
-        >
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            Decision note
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              placeholder="Why it's worth entering, or why not"
-              className="rounded-md border border-line bg-panel px-3 py-2 text-[15px] font-normal"
-            />
-            <span className="text-xs font-normal text-muted">Optional. Kept on the workspace overview.</span>
-          </label>
-          <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={onClose} className="min-h-10 rounded-md px-3.5 text-sm font-semibold text-muted hover:bg-panel-2 hover:text-text">
-              Cancel
-            </button>
-            <button value="skipped" className="min-h-10 rounded-md border border-line bg-panel px-3.5 text-sm font-semibold hover:border-line-strong">
-              Skip it
-            </button>
-            <button value="registered" className="min-h-10 rounded-md bg-rail px-4 text-sm font-semibold text-gold hover:bg-rail-2">
-              Register
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="mt-4 flex flex-col gap-4">
-          <p className="text-[15px] text-muted">Pick the result to move it to Results. It goes into the form guide.</p>
-          <div className="grid grid-cols-3 gap-2">
-            {RESULTS.map((r) => (
-              <button
-                key={r}
-                onClick={() => onConfirm("results", { result: r })}
-                className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-md border border-line bg-panel text-sm font-semibold hover:border-line-strong"
-              >
-                <span className={`grid size-[26px] place-items-center rounded-[3px] font-display text-base font-bold ${RESULT[r].cls}`} aria-hidden>
-                  {RESULT[r].letter}
-                </span>
-                {RESULT[r].word}
-              </button>
-            ))}
-          </div>
-          <button onClick={onClose} className="min-h-10 self-end rounded-md px-3.5 text-sm font-semibold text-muted hover:bg-panel-2 hover:text-text">
-            Cancel
-          </button>
-        </div>
-      )}
-    </dialog>
   );
 }

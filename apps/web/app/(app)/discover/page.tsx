@@ -4,6 +4,7 @@ import type { CategoryDto, HackathonDto } from "@hackops/shared";
 import { Icon } from "@/components/icon";
 import { EmptyState, PageHeader } from "@/components/shell/page-header";
 import { api, ApiError } from "@/lib/api";
+import { money } from "@/lib/format";
 import { clockTime, countdown, isUrgent, shortDate } from "@/lib/time";
 import { decide } from "./actions";
 import { DecideButton, RefreshButton } from "./controls";
@@ -20,14 +21,6 @@ const REGIONS = [
 ];
 const SOURCE: Record<string, string> = { devpost: "Devpost", mlh: "MLH", "my-list": "Malaysian list", manual: "Added by hand", demo: "Demo data" };
 const PAGE = 40;
-
-const money = (amount: number, currency: string | null) => {
-  try {
-    return new Intl.NumberFormat("en-MY", { style: "currency", currency: currency ?? "USD", maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency ?? ""} ${amount.toLocaleString("en-MY")}`.trim();
-  }
-};
 
 const qs = (s: Search, change: Partial<Search>) => {
   const p = new URLSearchParams(Object.entries({ ...s, ...change }).filter(([, v]) => v) as [string, string][]);

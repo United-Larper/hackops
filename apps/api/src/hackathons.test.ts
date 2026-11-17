@@ -99,6 +99,14 @@ describe("hackathons", () => {
   });
 });
 
+describe("patch", () => {
+  it("changes only the fields sent", async () => {
+    const h = await create({ ...KL, prizeTracks: [{ name: "Best AI" }] });
+    const after = (await http().patch(`/hackathons/${h.id}`).send({ decisionNote: "Close to home" }).expect(200)).body;
+    expect(after).toMatchObject({ decisionNote: "Close to home", source: "manual", categories: [{ slug: "ai-ml" }], prizeTracks: [{ name: "Best AI" }] });
+  });
+});
+
 describe("board", () => {
   const stage = (id: string, body: object) => http().post(`/hackathons/${id}/stage`).send(body).expect(200);
 

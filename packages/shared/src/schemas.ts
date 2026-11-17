@@ -11,6 +11,19 @@ const optionalUrl = url.nullish();
 const date = z.coerce.date().nullish();
 const tags = z.array(z.string().trim().min(1).max(60)).max(50);
 
+/**
+ * PATCH schema from an input schema: every field optional and its `.default()` removed.
+ * Zod 4 keeps defaults inside `.partial()`, so a one-field PATCH would otherwise reset every defaulted field.
+ */
+function patchOf<S extends z.ZodRawShape>(schema: z.ZodObject<S>) {
+  const shape = Object.fromEntries(
+    Object.entries(schema.shape).map(([k, v]) => [k, ((v instanceof z.ZodDefault ? v.unwrap() : v) as z.ZodType).optional()]),
+  );
+  return z.object(shape) as unknown as z.ZodObject<{
+    [K in keyof S]: z.ZodOptional<S[K] extends z.ZodDefault<infer I extends z.ZodType> ? I : S[K]>;
+  }>;
+}
+
 export const PrizeTrackSchema = z.object({
   name: text(200),
   sponsor: optionalText(200),
@@ -42,7 +55,7 @@ export const HackathonInput = z.object({
 export type HackathonInput = z.infer<typeof HackathonInput>;
 
 /** PATCH: any hackathon field, plus the workspace fields. Stage changes go through StageInput. */
-export const HackathonPatch = HackathonInput.partial().extend({
+export const HackathonPatch = patchOf(HackathonInput).extend({
   ownerId: z.string().nullish(),
   projectId: z.string().nullish(),
   decisionNote: optionalText(2000),
@@ -93,7 +106,7 @@ export const TaskInput = z.object({
   order: z.number().int().min(0).optional(),
 });
 export type TaskInput = z.infer<typeof TaskInput>;
-export const TaskPatch = TaskInput.partial();
+export const TaskPatch = patchOf(TaskInput);
 export type TaskPatch = z.infer<typeof TaskPatch>;
 
 export const TeamAssignmentsInput = z
@@ -118,7 +131,7 @@ export const MemberInput = z.object({
   dietary: optionalText(200),
 });
 export type MemberInput = z.infer<typeof MemberInput>;
-export const MemberPatch = MemberInput.partial();
+export const MemberPatch = patchOf(MemberInput);
 
 export const ProjectInput = z.object({
   name: text(120),
@@ -131,7 +144,7 @@ export const ProjectInput = z.object({
   devpostUrl: optionalUrl,
 });
 export type ProjectInput = z.infer<typeof ProjectInput>;
-export const ProjectPatch = ProjectInput.partial();
+export const ProjectPatch = patchOf(ProjectInput);
 
 export const TeamInput = z.object({
   name: text(120),

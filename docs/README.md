@@ -83,13 +83,13 @@ Concretely:
 - [x] 4.3 Filters and go/no-go
 
 ### 05 Hackathon workspace
-- [ ] 5.1 Workspace layout and overview
-- [ ] 5.2 Tasks
-- [ ] 5.3 Team and roles
-- [ ] 5.4 Timeline
-- [ ] 5.5 Activity and notes
-- [ ] 5.6 Links and submission
-- [ ] 5.7 Retro
+- [x] 5.1 Workspace layout and overview
+- [x] 5.2 Tasks
+- [x] 5.3 Team and roles
+- [x] 5.4 Timeline
+- [x] 5.5 Activity and notes
+- [x] 5.6 Links and submission
+- [x] 5.7 Retro
 
 ### 06 Team and responsibility
 - [ ] 6.1 Members screen
