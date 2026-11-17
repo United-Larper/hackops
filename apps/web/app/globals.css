@@ -1,3 +1,154 @@
 @import "tailwindcss";
 
-/* Design tokens arrive in phase 01 (docs/phases/01-design-system-and-shell.md). */
+/* HackOps · Matchday. Tokens are CSS variables so light and dark swap in one place.
+   Signal red (--live / --live-text) is reserved for the live clock and anything due within 24 hours; nothing else may use it. */
+
+:root,
+[data-theme="light"] {
+  --ground: #f4f4f1;
+  --panel: #ffffff;
+  --panel-2: #ecece6;
+  --line: #deded6;
+  --line-strong: #141412;
+  --text: #141412;
+  --muted: #5a5a53;
+
+  --rail: #0e0e0c;
+  --rail-2: #1d1d1a;
+  --rail-line: #2c2c28;
+  --rail-text: #d4d4cc;
+  --rail-muted: #8f8f87;
+  --rail-strong: #f4f4f1;
+
+  --gold: #f4c21b;
+  --on-gold: #0e0e0c;
+
+  --live: #ff4d2e;
+  --live-text: #c22e13;
+
+  --won: #157a43;
+  --on-won: #ffffff;
+  --part: #3a3a35;
+  --on-part: #e5e5de;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #121210;
+    --panel: #1b1b18;
+    --panel-2: #262622;
+    --line: #2f2f2a;
+    --line-strong: #edede6;
+    --text: #edede6;
+    --muted: #a4a49b;
+    --rail: #090907;
+    --rail-2: #1d1d1a;
+    --live-text: #ff6a4d;
+    --won: #1fa35b;
+    --on-won: #0e0e0c;
+    --part: #45453f;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --ground: #121210;
+  --panel: #1b1b18;
+  --panel-2: #262622;
+  --line: #2f2f2a;
+  --line-strong: #edede6;
+  --text: #edede6;
+  --muted: #a4a49b;
+  --rail: #090907;
+  --rail-2: #1d1d1a;
+  --live-text: #ff6a4d;
+  --won: #1fa35b;
+  --on-won: #0e0e0c;
+  --part: #45453f;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-rail: var(--rail);
+  --color-rail-2: var(--rail-2);
+  --color-rail-line: var(--rail-line);
+  --color-rail-text: var(--rail-text);
+  --color-rail-muted: var(--rail-muted);
+  --color-rail-strong: var(--rail-strong);
+  --color-gold: var(--gold);
+  --color-on-gold: var(--on-gold);
+  --color-live: var(--live);
+  --color-live-text: var(--live-text);
+  --color-won: var(--won);
+  --color-on-won: var(--on-won);
+  --color-part: var(--part);
+  --color-on-part: var(--on-part);
+
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-barlow-condensed), var(--font-barlow), ui-sans-serif, sans-serif;
+}
+
+/* Browser surfaces carry the design too. */
+html {
+  background: var(--ground);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+::selection {
+  background: var(--gold);
+  color: var(--on-gold);
+}
+input,
+textarea {
+  caret-color: var(--text);
+}
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.rail :focus-visible {
+  outline-color: var(--gold);
+}
+* {
+  scrollbar-color: var(--line) transparent;
+  scrollbar-width: thin;
+}
+a {
+  text-underline-offset: 3px;
+}
+
+/* Icons: SVG files from /public/icons painted in the current text colour. */
+.icon {
+  display: inline-block;
+  flex: none;
+  width: var(--icon-size, 18px);
+  height: var(--icon-size, 18px);
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

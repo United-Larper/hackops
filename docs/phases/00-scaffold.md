@@ -30,7 +30,7 @@
 
 ### Task 0.1: Workspace and root files
 
-**Files:** create `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.gitignore`, `.nvmrc`.
+**Files:** create `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.gitignore`.
 
 **Interfaces:** produces the root scripts `dev`, `build`, `test`, `typecheck`, `check`, and the workspace globs `apps/*`, `packages/*`.
 
