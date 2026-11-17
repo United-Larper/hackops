@@ -72,6 +72,19 @@ export const HackathonQuery = z.object({
 });
 export type HackathonQuery = z.infer<typeof HackathonQuery>;
 
+/** GET /hackathons/board filters. Online vs in person: hybrid events count as both. */
+export const BoardQuery = z.object({
+  category: z.string().optional(),
+  owner: z.string().optional(),
+  region: z.enum(REGIONS).optional(),
+  mode: z.enum(["online", "in_person"]).optional(),
+  /** "1": only cards whose next deadline falls in the next 7 days. */
+  week: z.literal("1").optional(),
+  /** "1": include the skipped column. */
+  skipped: z.literal("1").optional(),
+});
+export type BoardQuery = z.infer<typeof BoardQuery>;
+
 export const TaskInput = z.object({
   title: text(200),
   status: z.enum(TASK_STATUSES).default("todo"),

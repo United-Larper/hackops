@@ -144,6 +144,21 @@ a {
   mask: var(--icon) center / contain no-repeat;
 }
 
+/* Board Move menu: a native popover anchored under its button; it flips above when there's no room.
+   Without anchor positioning it falls back to the centred popover default. */
+.move-button {
+  anchor-name: var(--anchor);
+}
+@supports (position-area: bottom) {
+  .move-menu {
+    position-anchor: var(--anchor);
+    inset: auto;
+    margin: 4px 0;
+    position-area: bottom span-left;
+    position-try-fallbacks: flip-block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -24,7 +24,7 @@ export function MatchClock({ to, label = "Live · to submission", tone = "dark" 
   const over = now >= target;
   const color = tone === "dark" ? "text-live" : "text-live-text";
   return (
-    <div className="flex items-baseline gap-2">
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
       <time
         dateTime={to}
         suppressHydrationWarning
