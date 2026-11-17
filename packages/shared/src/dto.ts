@@ -1,6 +1,7 @@
 import type { HackathonResult, Mode, Region, Role, Source, TaskStatus } from "./enums";
 import type { Phase, Stage } from "./lifecycle";
 import type { PrizeTrack } from "./schemas";
+import type { Fit } from "./fit";
 
 // What the API returns. Dates are ISO strings (UTC); the web formats them in Asia/Kuala_Lumpur.
 
@@ -38,6 +39,8 @@ export type HackathonDto = {
   owner: MemberRefDto | null;
   projectId: string | null;
   categories: CategoryDto[];
+  /** Computed on read against the current team profile; null when no team profile exists. */
+  fit: Fit | null;
   createdAt: string;
   updatedAt: string;
 };

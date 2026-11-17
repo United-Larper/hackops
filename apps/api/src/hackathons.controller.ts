@@ -11,7 +11,7 @@ import {
 } from "@hackops/shared";
 import { ZodPipe } from "./common/zod.pipe";
 import type { Prisma } from "./generated/prisma/client";
-import { HACKATHON_INCLUDE, WORKSPACE_INCLUDE, toHackathonDto, toTaskDto, toWorkspaceDto } from "./mappers";
+import { HACKATHON_INCLUDE, WORKSPACE_INCLUDE, fitTeam, toHackathonDto, toTaskDto, toWorkspaceDto } from "./mappers";
 import { PrismaService } from "./prisma.service";
 import { changeStage, logActivity } from "./stage";
 
@@ -47,8 +47,26 @@ export class HackathonsController {
       ...(q.region === "malaysia" && { mode: { not: "online" }, country: "Malaysia" }),
       ...(q.region === "overseas" && { mode: { not: "online" }, OR: [{ country: null }, { country: { not: "Malaysia" } }] }),
     };
-    const rows = await this.db.hackathon.findMany({ where, include: HACKATHON_INCLUDE, orderBy: { createdAt: "desc" } });
-    return rows.map(toHackathonDto);
+    const [rows, team] = await Promise.all([
+      this.db.hackathon.findMany({ where, include: HACKATHON_INCLUDE, orderBy: { createdAt: "desc" } }),
+      fitTeam(this.db),
+    ]);
+    const now = new Date();
+    const next = (h: { registrationClosesAt: Date | null; submissionDueAt: Date | null }) => h.registrationClosesAt ?? h.submissionDueAt;
+    // ponytail: deadline filters and sorting run in memory; fine for hundreds of rows, move to SQL past that.
+    const kept = rows.filter((h) => {
+      const n = next(h);
+      if (q.open && n && n <= now) return false;
+      if (q.closesWithin && (!n || n <= now || n.getTime() - now.getTime() > q.closesWithin * 86_400_000)) return false;
+      return true;
+    });
+    const dtos = kept.map((h) => toHackathonDto(h, team, now));
+    if (q.sort === "fit") dtos.sort((a, b) => (b.fit?.score ?? 0) - (a.fit?.score ?? 0));
+    if (q.sort === "deadline") {
+      const t = (d: (typeof dtos)[number]) => new Date(d.registrationClosesAt ?? d.submissionDueAt ?? "9999-12-31").getTime();
+      dtos.sort((a, b) => t(a) - t(b));
+    }
+    return dtos;
   }
 
   @Post()
@@ -67,7 +85,8 @@ export class HackathonsController {
 
   @Get(":id")
   async get(@Param("id") id: string) {
-    return toWorkspaceDto(await this.db.hackathon.findUniqueOrThrow({ where: { id }, include: WORKSPACE_INCLUDE }));
+    const [row, team] = await Promise.all([this.db.hackathon.findUniqueOrThrow({ where: { id }, include: WORKSPACE_INCLUDE }), fitTeam(this.db)]);
+    return toWorkspaceDto(row, team);
   }
 
   @Patch(":id")
