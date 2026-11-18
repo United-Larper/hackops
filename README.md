@@ -19,6 +19,7 @@ The seed adds a fictional demo team and hackathons, dated relative to today.
 
 - Web: http://localhost:3200
 - API: http://localhost:4000/health
+- Calendar feed: http://localhost:4000/calendar.ics. Save it and import it into Google Calendar (Settings → Import), or subscribe to the URL from Outlook or Apple Calendar on the same machine. Every deadline and open task comes with reminders 7 days, 2 days and 3 hours before (Google ignores feed reminders, so set default notifications on that calendar).
 
 ```bash
 pnpm check

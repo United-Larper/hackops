@@ -218,7 +218,7 @@ Gently squared corners: 3px on tags and form-guide squares, 6px on controls and 
 - **Mobile bottom bar:** five items, icon over an 11px label, 56px tall targets, active item in gold.
 
 ### Fixtures panel (signature)
-The due-soon slot on every app page: an ink panel headed "This week's fixtures" in gold condensed caps. Each row: day and date tile (TODAY or month underneath), kick-off time in MYT, event, what's due, countdown. Rows due within 24 hours turn their time and countdown Signal Red. On phones only the next fixture shows.
+The due-soon slot on every app page: an ink panel headed "This week's fixtures" in gold condensed caps. Rows sit under Today, Tomorrow and This week headings (13px condensed caps, Rail Muted) by MYT day. Each row links to its hackathon: day and date tile (month underneath), kick-off time in MYT, event (the task's name for a task), what's due, countdown. Rows due within 24 hours turn their time and countdown Signal Red. After five rows the rest fold behind a native "N more this week" toggle. On phones only the next fixture shows.
 
 ### Match clock (signature)
 HH:MM:SS in 30px condensed 800, ticking once a second, with an uppercase label ("Live · to submission"). Signal Red on ink, Signal Red Text on light. Reads "Full time" once the deadline passes.
