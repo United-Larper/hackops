@@ -179,3 +179,26 @@ describe("team workload", () => {
     expect(w.members.find((r: { member: { id: string } }) => r.member.id === "m2")).toMatchObject({ hackathons: [{ id: b.id, role: "lead", accountable: true }], openTasks: 0, clashes: [] });
   });
 });
+
+describe("member history", () => {
+  it("lists the member's submitted and finished hackathons with role and result, newest first", async () => {
+    const old = await create({ ...KL, title: "Old Hack", endsAt: "2029-01-02T00:00:00Z" });
+    const recent = await create({ ...KL, title: "Recent Hack", endsAt: "2029-06-02T00:00:00Z" });
+    const live = await create({ ...KL, title: "Live Hack" });
+    for (const h of [old, recent, live]) {
+      await http().put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "designer", accountable: true }]).expect(200);
+    }
+    await http().post(`/hackathons/${old.id}/stage`).send({ stage: "results", result: "won" }).expect(200);
+    await http().post(`/hackathons/${recent.id}/stage`).send({ stage: "submitted" }).expect(200);
+    await http().post(`/hackathons/${live.id}/stage`).send({ stage: "building" }).expect(200);
+
+    const m = (await http().get("/members/m1").expect(200)).body;
+    expect(m.name).toBe("Aina");
+    expect(m.history).toEqual([
+      { hackathon: { id: recent.id, title: "Recent Hack", stage: "submitted", endsAt: "2029-06-02T00:00:00.000Z" }, role: "designer", accountable: true, result: null },
+      { hackathon: { id: old.id, title: "Old Hack", stage: "results", endsAt: "2029-01-02T00:00:00.000Z" }, role: "designer", accountable: true, result: "won" },
+    ]);
+    expect((await http().get("/members/m2").expect(200)).body.history).toEqual([]);
+    await http().get("/members/nope").expect(404);
+  });
+});

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from "@nestjs/common";
 import {
-  ACTIVE_STAGES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, workload, type Role, type Stage, type TeamWorkloadDto,
+  ACTIVE_STAGES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, workload,
+  type HackathonResult, type MemberDetailDto, type Role, type Stage, type TeamWorkloadDto,
 } from "@hackops/shared";
 import { z } from "zod";
 import { ZodPipe } from "./common/zod.pipe";
@@ -25,8 +26,24 @@ export class MembersController {
   }
 
   @Get(":id")
-  async get(@Param("id") id: string) {
-    return toMemberDto(await this.db.member.findUniqueOrThrow({ where: { id } }));
+  async get(@Param("id") id: string): Promise<MemberDetailDto> {
+    const m = await this.db.member.findUniqueOrThrow({
+      where: { id },
+      include: { assignments: { where: { hackathon: { stage: { in: ["submitted", "results"] } } }, include: { hackathon: true } } },
+    });
+    const when = (h: { endsAt: Date | null; submissionDueAt: Date | null; updatedAt: Date }) => (h.endsAt ?? h.submissionDueAt ?? h.updatedAt).getTime();
+    const { assignments, ...member } = m;
+    return {
+      ...toMemberDto(member),
+      history: assignments
+        .sort((a, b) => when(b.hackathon) - when(a.hackathon))
+        .map(({ hackathon: h, role, accountable }) => ({
+          hackathon: { id: h.id, title: h.title, stage: h.stage as Stage, endsAt: h.endsAt?.toISOString() ?? null },
+          role: role as Role,
+          accountable,
+          result: h.result as HackathonResult | null,
+        })),
+    };
   }
 
   @Post()
