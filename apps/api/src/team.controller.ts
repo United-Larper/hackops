@@ -22,6 +22,11 @@ export class MembersController {
     return (await this.db.member.findMany({ orderBy: { name: "asc" } })).map(toMemberDto);
   }
 
+  @Get(":id")
+  async get(@Param("id") id: string) {
+    return toMemberDto(await this.db.member.findUniqueOrThrow({ where: { id } }));
+  }
+
   @Post()
   async create(@Body(new ZodPipe(MemberInput)) body: MemberInput) {
     return toMemberDto(await this.db.member.create({ data: jsonFields(body, ["skills", "preferredRoles"]) }));

@@ -1,7 +1,8 @@
 "use server";
 
 import { refresh } from "next/cache";
-import type { HackathonResult, Stage } from "@hackops/shared";
+import { redirect } from "next/navigation";
+import type { HackathonResult, MemberInput, Stage } from "@hackops/shared";
 import { api, ApiError } from "@/lib/api";
 
 export type MoveResult = { error?: string };
@@ -90,6 +91,25 @@ export type ProjectLinks = { repoUrl: string | null; demoUrl: string | null; vid
 
 export async function saveProjectLinks(projectId: string, links: ProjectLinks) {
   return write(() => api(`/projects/${encodeURIComponent(projectId)}`, { method: "PATCH", body: JSON.stringify(links) }), "The links didn't save.");
+}
+
+/** Create or update a member; a new member opens on their own page. */
+export async function saveMember(id: string | null, fields: MemberInput): Promise<MoveResult> {
+  let created: string | undefined;
+  const r = await write(async () => {
+    const body = JSON.stringify(fields);
+    if (id) await api(`/members/${encodeURIComponent(id)}`, { method: "PATCH", body });
+    else created = (await api<{ id: string }>("/members", { method: "POST", body })).id;
+  }, "The member didn't save.");
+  if (created) redirect(`/team/${created}`);
+  return r;
+}
+
+/** Remove a member; their assignments go with them and their tasks become unassigned. */
+export async function removeMember(id: string): Promise<MoveResult> {
+  const r = await write(() => api(`/members/${encodeURIComponent(id)}`, { method: "DELETE" }), "The member wasn't removed.");
+  if (!r.error) redirect("/team");
+  return r;
 }
 
 export type Retro = { result: HackathonResult | null; resultNote: string | null; retroWentWell: string | null; retroToChange: string | null };

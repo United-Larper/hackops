@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { ROLES, skillGaps, type AssignmentDto, type CategoryDto, type MemberDto, type Role } from "@hackops/shared";
 import { Icon } from "@/components/icon";
 import { saveTeam } from "@/lib/actions";
+import { ROLE_LABEL as ROLE } from "@/lib/format";
 
-const ROLE: Record<Role, string> = { lead: "Lead", developer: "Developer", designer: "Designer", pitch: "Pitch" };
 type Pick = { on: boolean; role: Role };
 
 export function TeamForm({
