@@ -9,9 +9,11 @@ import { ROLE_LABEL as ROLE } from "@/lib/format";
 type Pick = { on: boolean; role: Role };
 
 export function TeamForm({
-  hackathonId, members, assignments, categories, teamSizeMax,
+  hackathonId, members, assignments, categories, teamSizeMax, clashes,
 }: {
   hackathonId: string; members: MemberDto[]; assignments: AssignmentDto[]; categories: CategoryDto[]; teamSizeMax: number | null;
+  /** Per member: titles of their other active hackathons on overlapping dates. */
+  clashes: Record<string, string[]>;
 }) {
   const [picks, setPicks] = useState<Record<string, Pick>>(() =>
     Object.fromEntries(
@@ -64,6 +66,12 @@ export function TeamForm({
                 <label htmlFor={`on-${m.id}`} className="min-w-0">
                   <span className="block font-semibold">{m.name}</span>
                   <span className="block truncate text-[13px] text-muted">{m.skills.join(" · ") || "No skills listed yet"}</span>
+                  {p.on && clashes[m.id]?.length ? (
+                    <span className="mt-1 flex items-start gap-1.5 text-[13px] font-medium">
+                      <Icon name="warning-circle" size={16} className="mt-px shrink-0" />
+                      Also on {clashes[m.id].join(", ")} on overlapping dates
+                    </span>
+                  ) : null}
                 </label>
                 <label className="col-start-2 flex items-center gap-2 text-[13px] text-muted sm:col-start-auto">
                   <span className="sm:sr-only">Role</span>

@@ -157,3 +157,25 @@ describe("members, projects, team", () => {
     await http().put("/team").send({ name: "" }).expect(400);
   });
 });
+
+describe("team workload", () => {
+  it("lists active hackathons and each member's roles, open tasks and clashes", async () => {
+    const a = await create({ ...KL, startsAt: "2030-01-08T00:00:00Z" });
+    const b = await create({ ...KL, title: "Overlapping Hack", startsAt: "2030-01-09T00:00:00Z" });
+    await create({ ...KL, title: "Only interested" });
+    for (const h of [a, b]) await http().post(`/hackathons/${h.id}/stage`).send({ stage: "registered" }).expect(200);
+    await http().put(`/hackathons/${a.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }]).expect(200);
+    await http().put(`/hackathons/${b.id}/team`).send([{ memberId: "m1", role: "pitch", accountable: false }, { memberId: "m2", role: "lead", accountable: true }]).expect(200);
+    const ws = (await http().get(`/hackathons/${a.id}`).expect(200)).body;
+    await http().patch(`/hackathons/${a.id}/tasks/${ws.tasks[0].id}`).send({ assigneeId: "m1" }).expect(200);
+
+    const w = (await http().get("/team/workload").expect(200)).body;
+    expect(w.hackathons.map((h: { title: string }) => h.title).sort()).toEqual(["KL AI Hack", "Overlapping Hack"]);
+    expect(w.members.find((r: { member: { id: string } }) => r.member.id === "m1")).toMatchObject({
+      hackathons: expect.arrayContaining([{ id: a.id, role: "lead", accountable: true }, { id: b.id, role: "pitch", accountable: false }]),
+      openTasks: 1,
+      clashes: [expect.arrayContaining([a.id, b.id])],
+    });
+    expect(w.members.find((r: { member: { id: string } }) => r.member.id === "m2")).toMatchObject({ hackathons: [{ id: b.id, role: "lead", accountable: true }], openTasks: 0, clashes: [] });
+  });
+});

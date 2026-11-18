@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from "@nestjs/common";
-import { MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput } from "@hackops/shared";
+import {
+  ACTIVE_STAGES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, workload, type Role, type Stage, type TeamWorkloadDto,
+} from "@hackops/shared";
 import { z } from "zod";
 import { ZodPipe } from "./common/zod.pipe";
 import { toMemberDto, toProjectDto, toTeamDto } from "./mappers";
@@ -83,6 +85,26 @@ export class TeamController {
   async get() {
     const team = await this.db.team.findUnique({ where: { id: "team" } });
     return team ? toTeamDto(team) : null;
+  }
+
+  @Get("team/workload")
+  async workload(): Promise<TeamWorkloadDto> {
+    const [members, rows] = await Promise.all([
+      this.db.member.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      this.db.hackathon.findMany({
+        where: { stage: { in: [...ACTIVE_STAGES] } },
+        include: { assignments: true, tasks: { select: { hackathonId: true, assigneeId: true, status: true } } },
+      }),
+    ]);
+    const when = (h: (typeof rows)[number]) => (h.startsAt ?? h.submissionDueAt)?.getTime() ?? Infinity;
+    rows.sort((a, b) => when(a) - when(b));
+    return {
+      hackathons: rows.map((h) => ({
+        id: h.id, title: h.title, stage: h.stage as Stage,
+        startsAt: h.startsAt?.toISOString() ?? null, endsAt: h.endsAt?.toISOString() ?? null, submissionDueAt: h.submissionDueAt?.toISOString() ?? null,
+      })),
+      members: workload(members, rows.map((h) => ({ ...h, assignments: h.assignments.map((a) => ({ ...a, role: a.role as Role })) })), rows.flatMap((h) => h.tasks)),
+    };
   }
 
   @Put("team")

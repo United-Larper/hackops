@@ -7,3 +7,4 @@ export * from "./discovery";
 export * from "./fit";
 export * from "./board";
 export * from "./skills";
+export * from "./workload";
