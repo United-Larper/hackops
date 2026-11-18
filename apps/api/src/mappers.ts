@@ -91,7 +91,7 @@ export function toMemberDto(m: Prisma.MemberGetPayload<object>): MemberDto {
 }
 
 export function toTeamDto(t: Prisma.TeamGetPayload<object>): TeamDto {
-  return { name: t.name, pitch: t.pitch, preferredTech: list(t.preferredTech), preferredCats: list(t.preferredCats), homeCity: t.homeCity };
+  return { name: t.name, pitch: t.pitch, preferredTech: list(t.preferredTech), preferredCats: list(t.preferredCats), homeCity: t.homeCity, fillToken: t.fillToken };
 }
 
 /** The team profile as the fit score needs it, or null before a team profile exists. */

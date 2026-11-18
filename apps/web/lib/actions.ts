@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import type { HackathonResult, MemberInput, ProjectInput, Stage } from "@hackops/shared";
+import type { HackathonResult, MemberInput, ProjectInput, Stage, TeamInput } from "@hackops/shared";
 import { api, ApiError } from "@/lib/api";
 
 export type MoveResult = { error?: string };
@@ -141,4 +141,14 @@ export async function saveRetro(id: string, stage: Stage, current: HackathonResu
       await api(`${hack(id)}/stage`, { method: "POST", body: JSON.stringify({ stage: "results", result }) });
     }
   }, "The retro didn't save.");
+}
+
+/** Save the team profile (Settings). PUT replaces the whole row, so the form sends every field. */
+export async function saveTeamProfile(fields: TeamInput): Promise<MoveResult> {
+  return write(() => api("/team", { method: "PUT", body: JSON.stringify(fields) }), "The team profile didn't save.");
+}
+
+/** Make a new bookmarklet secret; the old bookmarklet stops working. */
+export async function newFillToken(): Promise<MoveResult> {
+  return write(() => api("/team/fill-token", { method: "POST" }), "The bookmarklet wasn't made.");
 }
