@@ -92,10 +92,10 @@ Concretely:
 - [x] 5.7 Retro
 
 ### 06 Team and responsibility
-- [ ] 6.1 Members screen
-- [ ] 6.2 Workload (with tests)
-- [ ] 6.3 Responsibility grid
-- [ ] 6.4 Member history
+- [x] 6.1 Members screen
+- [x] 6.2 Workload (with tests)
+- [x] 6.3 Responsibility grid
+- [x] 6.4 Member history
 
 ### 07 Projects and portfolio
 - [ ] 7.1 Projects screen and linking
