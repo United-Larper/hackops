@@ -89,6 +89,10 @@ export type HackathonQuery = z.infer<typeof HackathonQuery>;
 export const PortfolioQuery = z.object({ category: z.string().max(100).optional(), member: z.string().max(100).optional() });
 export type PortfolioQuery = z.infer<typeof PortfolioQuery>;
 
+/** GET /deadlines: how many days ahead the due-soon panel looks. */
+export const DeadlinesQuery = z.object({ days: z.coerce.number().int().min(1).max(60).default(7) });
+export type DeadlinesQuery = z.infer<typeof DeadlinesQuery>;
+
 /** GET /hackathons/board filters. Online vs in person: hybrid events count as both. */
 export const BoardQuery = z.object({
   category: z.string().optional(),

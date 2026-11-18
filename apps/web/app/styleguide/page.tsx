@@ -96,9 +96,9 @@ export default function StyleguidePage() {
       <div className="px-6 pt-6 sm:px-8">
         <Fixtures
           items={[
-            { id: "a", at: inHours(3.7), event: "Selangor Smart City Hack", what: "Registration closes" },
-            { id: "b", at: inHours(66.2), event: "Global AI Agents Challenge · online", what: "Submission due" },
-            { id: "c", at: inHours(108), event: "Penang Health Hack", what: "Event starts" },
+            { id: "a", at: inHours(3.7), group: "today", event: "Selangor Smart City Hack", what: "Registration closes", href: "/board" },
+            { id: "b", at: inHours(66.2), group: "week", event: "Global AI Agents Challenge · online", what: "Submission due", href: "/board" },
+            { id: "c", at: inHours(108), group: "week", event: "Penang Health Hack", what: "Task due · Pitch deck", href: "/board" },
           ]}
         />
       </div>
