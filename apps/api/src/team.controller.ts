@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from "@nestjs/common";
 import {
   ACTIVE_STAGES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, workload,
-  type HackathonResult, type MemberDetailDto, type Role, type Stage, type TeamWorkloadDto,
+  type HackathonResult, type MemberDetailDto, type ProjectDetailDto, type ProjectSummaryDto, type Role, type Stage, type TeamWorkloadDto,
 } from "@hackops/shared";
 import { z } from "zod";
 import { ZodPipe } from "./common/zod.pipe";
-import { toMemberDto, toProjectDto, toTeamDto } from "./mappers";
+import { newest, toMemberDto, toProjectDto, toTeamDto } from "./mappers";
 import { PrismaService } from "./prisma.service";
 
 // Members, projects, the team row and categories: plain reads and writes, so the controllers call Prisma directly.
@@ -31,12 +31,11 @@ export class MembersController {
       where: { id },
       include: { assignments: { where: { hackathon: { stage: { in: ["submitted", "results"] } } }, include: { hackathon: true } } },
     });
-    const when = (h: { endsAt: Date | null; submissionDueAt: Date | null; updatedAt: Date }) => (h.endsAt ?? h.submissionDueAt ?? h.updatedAt).getTime();
     const { assignments, ...member } = m;
     return {
       ...toMemberDto(member),
       history: assignments
-        .sort((a, b) => when(b.hackathon) - when(a.hackathon))
+        .sort((a, b) => newest(b.hackathon) - newest(a.hackathon))
         .map(({ hackathon: h, role, accountable }) => ({
           hackathon: { id: h.id, title: h.title, stage: h.stage as Stage, endsAt: h.endsAt?.toISOString() ?? null },
           role: role as Role,
@@ -68,13 +67,20 @@ export class ProjectsController {
   constructor(private readonly db: PrismaService) {}
 
   @Get()
-  async list() {
-    return (await this.db.project.findMany({ orderBy: { name: "asc" } })).map(toProjectDto);
+  async list(): Promise<ProjectSummaryDto[]> {
+    const rows = await this.db.project.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { hackathons: true } } } });
+    return rows.map(({ _count, ...p }) => ({ ...toProjectDto(p), entries: _count.hackathons }));
   }
 
   @Get(":id")
-  async get(@Param("id") id: string) {
-    return toProjectDto(await this.db.project.findUniqueOrThrow({ where: { id } }));
+  async get(@Param("id") id: string): Promise<ProjectDetailDto> {
+    const { hackathons, ...p } = await this.db.project.findUniqueOrThrow({ where: { id }, include: { hackathons: true } });
+    return {
+      ...toProjectDto(p),
+      hackathons: hackathons
+        .sort((a, b) => newest(b) - newest(a))
+        .map((h) => ({ id: h.id, title: h.title, stage: h.stage as Stage, result: h.result as HackathonResult | null, endsAt: h.endsAt?.toISOString() ?? null })),
+    };
   }
 
   @Post()

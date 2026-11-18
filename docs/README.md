@@ -98,8 +98,8 @@ Concretely:
 - [x] 6.4 Member history
 
 ### 07 Projects and portfolio
-- [ ] 7.1 Projects screen and linking
-- [ ] 7.2 Public portfolio page
+- [x] 7.1 Projects screen and linking
+- [x] 7.2 Public portfolio page
 
 ### 08 Deadlines and reminders
 - [ ] 8.1 Due-soon endpoint and panel (with tests)

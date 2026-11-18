@@ -4,14 +4,8 @@ import { useState, useTransition } from "react";
 import type { ProjectDto } from "@hackops/shared";
 import { Icon } from "@/components/icon";
 import { createProject, linkProject, saveProjectLinks, type ProjectLinks } from "@/lib/actions";
+import { PROJECT_LINKS } from "@/lib/format";
 
-const LINKS: { key: keyof ProjectLinks; label: string; hint: string }[] = [
-  { key: "repoUrl", label: "Repository", hint: "https://github.com/…" },
-  { key: "demoUrl", label: "Live demo", hint: "https://…" },
-  { key: "videoUrl", label: "Demo video", hint: "https://youtu.be/…" },
-  { key: "slidesUrl", label: "Slides", hint: "https://…" },
-  { key: "devpostUrl", label: "Submission page", hint: "https://devpost.com/software/…" },
-];
 const field = "min-h-10 w-full rounded-md border border-line bg-panel px-3 text-[15px] text-text";
 const btn = "min-h-10 rounded-md border border-line-strong bg-panel px-4 text-sm font-semibold transition-colors hover:bg-text hover:text-ground disabled:opacity-50";
 
@@ -39,12 +33,12 @@ export function LinksForm({ hackathonId, project, sharedWith }: { hackathonId: s
     <form
       className="flex flex-col gap-3"
       action={(fd) => {
-        const links = Object.fromEntries(LINKS.map((l) => [l.key, String(fd.get(l.key)).trim() || null])) as ProjectLinks;
+        const links = Object.fromEntries(PROJECT_LINKS.map((l) => [l.key, String(fd.get(l.key)).trim() || null])) as ProjectLinks;
         run(() => saveProjectLinks(project.id, links), "Links saved.");
       }}
     >
       <div className="divide-y divide-line rounded-[10px] border border-line bg-panel">
-        {LINKS.map((l) => {
+        {PROJECT_LINKS.map((l) => {
           const url = project[l.key];
           return (
             <label key={l.key} className="grid gap-1.5 px-4 py-3 sm:grid-cols-[150px_minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:px-5">

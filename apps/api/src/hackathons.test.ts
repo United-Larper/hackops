@@ -202,3 +202,69 @@ describe("member history", () => {
     await http().get("/members/nope").expect(404);
   });
 });
+
+describe("projects", () => {
+  it("lists entry counts, and a project's hackathons with results, newest first", async () => {
+    const p = (await http().post("/projects").send({ name: "Banjir Watch", tech: ["Flutter"] }).expect(201)).body;
+    const old = await create({ ...KL, title: "Old Hack", endsAt: "2029-01-02T00:00:00Z" });
+    const recent = await create({ ...KL, title: "Recent Hack", endsAt: "2029-06-02T00:00:00Z" });
+    for (const h of [old, recent]) await http().patch(`/hackathons/${h.id}`).send({ projectId: p.id }).expect(200);
+    await http().post(`/hackathons/${old.id}/stage`).send({ stage: "results", result: "finalist" }).expect(200);
+
+    expect((await http().get("/projects").expect(200)).body).toMatchObject([{ name: "Banjir Watch", entries: 2 }]);
+    const detail = (await http().get(`/projects/${p.id}`).expect(200)).body;
+    expect(detail.tech).toEqual(["Flutter"]);
+    expect(detail.hackathons).toEqual([
+      { id: recent.id, title: "Recent Hack", stage: "discovered", result: null, endsAt: "2029-06-02T00:00:00.000Z" },
+      { id: old.id, title: "Old Hack", stage: "results", result: "finalist", endsAt: "2029-01-02T00:00:00.000Z" },
+    ]);
+  });
+});
+
+describe("portfolio", () => {
+  it("lists only Submitted and Results entries, newest first, filtered by category or member", async () => {
+    const p = (await http().post("/projects").send({ name: "Banjir Watch", tech: ["Flutter"], repoUrl: "https://github.com/x/y" }).expect(201)).body;
+    const won = await create({ ...KL, title: "Won Hack", endsAt: "2029-01-02T00:00:00Z" });
+    const sent = await create({ ...KL, title: "Sent Hack", endsAt: "2029-06-02T00:00:00Z", categories: [] });
+    const live = await create({ ...KL, title: "Live Hack" });
+    await http().patch(`/hackathons/${won.id}`).send({ projectId: p.id, retroWentWell: "secret retro", decisionNote: "secret decision" }).expect(200);
+    await http().put(`/hackathons/${won.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }, { memberId: "m2", role: "pitch" }]).expect(200);
+    await http().put(`/hackathons/${sent.id}/team`).send([{ memberId: "m2", role: "developer", accountable: true }]).expect(200);
+    await http().post(`/hackathons/${won.id}/stage`).send({ stage: "results", result: "won" }).expect(200);
+    await http().post(`/hackathons/${sent.id}/stage`).send({ stage: "submitted" }).expect(200);
+    await http().post(`/hackathons/${live.id}/stage`).send({ stage: "building" }).expect(200);
+
+    const all = (await http().get("/portfolio").expect(200)).body;
+    expect(all.entries.map((e: { title: string }) => e.title)).toEqual(["Sent Hack", "Won Hack"]);
+    expect(all.entries[1]).toMatchObject({
+      result: "won",
+      categories: [{ slug: "ai-ml", name: "AI / ML" }],
+      project: { name: "Banjir Watch", tech: ["Flutter"], repoUrl: "https://github.com/x/y" },
+      team: [{ id: "m1", name: "Aina", role: "lead" }, { id: "m2", name: "Wei Jie", role: "pitch" }],
+    });
+    expect(all.members).toEqual([{ id: "m1", name: "Aina" }, { id: "m2", name: "Wei Jie" }]);
+    expect(all.entries.map((e: { sample: boolean }) => e.sample)).toEqual([false, false]);
+    await db.hackathon.update({ where: { id: won.id }, data: { source: "demo" } });
+    expect((await http().get("/portfolio?member=m1").expect(200)).body.entries[0].sample).toBe(true);
+
+    const byCat = (await http().get("/portfolio?category=ai-ml").expect(200)).body;
+    expect(byCat.entries.map((e: { title: string }) => e.title)).toEqual(["Won Hack"]);
+    const byMember = (await http().get("/portfolio?member=m1").expect(200)).body;
+    expect(byMember.entries.map((e: { title: string }) => e.title)).toEqual(["Won Hack"]);
+  });
+
+  it("never exposes private member fields or internal notes", async () => {
+    await db.member.update({ where: { id: "m1" }, data: { email: "aina@example.com", tshirtSize: "S", dietary: "Halal", organisation: "UM" } });
+    const h = await create({ ...KL, title: "Done Hack" });
+    await http().patch(`/hackathons/${h.id}`).send({ decisionNote: "secret decision", retroWentWell: "secret retro", retroToChange: "secret change" }).expect(200);
+    await http().put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }]).expect(200);
+    await http().post(`/hackathons/${h.id}/stage`).send({ stage: "results", result: "finalist", note: "secret note" }).expect(200);
+    await http().patch(`/hackathons/${h.id}`).send({ resultNote: "secret judges feedback" }).expect(200);
+
+    const res = await http().get("/portfolio").expect(200);
+    expect(res.body.entries).toHaveLength(1);
+    for (const secret of ["aina@example.com", "Halal", "UM", "tshirtSize", "email", "dietary", "organisation", "secret"]) {
+      expect(res.text).not.toContain(secret);
+    }
+  });
+});
