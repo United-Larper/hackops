@@ -102,7 +102,7 @@ Concretely:
 - [x] 7.2 Public portfolio page
 
 ### 08 Deadlines and reminders
-- [ ] 8.1 Due-soon endpoint and panel (with tests)
+- [x] 8.1 Due-soon endpoint and panel (with tests)
 - [ ] 8.2 Calendar feed
 
 ### 09 Sign-up assist

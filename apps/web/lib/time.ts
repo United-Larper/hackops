@@ -5,8 +5,12 @@ const fmt = (opts: Intl.DateTimeFormatOptions, locale = "en-MY") => new Intl.Dat
 const weekday = fmt({ weekday: "short" });
 const dayMonth = fmt({ day: "numeric", month: "short" });
 const hm = fmt({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, "en-GB");
+const dom = fmt({ day: "numeric" });
+const mon = fmt({ month: "short" });
 
 export const dayName = (d: Date | string) => weekday.format(new Date(d)).toUpperCase();
+export const dayOfMonth = (d: Date | string) => dom.format(new Date(d));
+export const monthName = (d: Date | string) => mon.format(new Date(d)).toUpperCase();
 export const shortDate = (d: Date | string) => `${weekday.format(new Date(d))} ${dayMonth.format(new Date(d))}`;
 export const clockTime = (d: Date | string) => hm.format(new Date(d));
 export const sameDay = (a: Date, b: Date) => a.toLocaleDateString("en-CA", { timeZone: MYT }) === b.toLocaleDateString("en-CA", { timeZone: MYT });

@@ -8,3 +8,4 @@ export * from "./fit";
 export * from "./board";
 export * from "./skills";
 export * from "./workload";
+export * from "./deadlines";

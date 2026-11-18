@@ -16,7 +16,8 @@ export function progressOf(tasks: { status: TaskStatus | string }[]): Progress {
 }
 
 type When = Date | string | null;
-const WATCH: Record<Stage, Deadline["kind"][]> = {
+/** Which deadlines matter at each stage. */
+export const WATCH: Record<Stage, Deadline["kind"][]> = {
   discovered: ["registration", "submission"],
   interested: ["registration", "submission"],
   registered: ["submission"],
