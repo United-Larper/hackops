@@ -6,7 +6,7 @@ import type { MemberDetailDto } from "@hackops/shared";
 import { PageHeader } from "@/components/shell/page-header";
 import { api, ApiError } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/format";
-import { RESULT_META } from "@/lib/stage";
+import { ResultSquare } from "@/components/result";
 import { MYT } from "@/lib/time";
 import { MemberForm } from "../member-form";
 
@@ -51,16 +51,7 @@ function History({ m }: { m: MemberDetailDto }) {
         <ol className="mt-2 divide-y divide-line">
           {m.history.map(({ hackathon: h, role, accountable, result }) => (
             <li key={h.id} className="flex items-center gap-3 py-2.5">
-              {result ? (
-                <span className={`grid size-[22px] shrink-0 place-items-center rounded-[3px] font-display text-[13px] font-bold ${RESULT_META[result].cls}`}>
-                  <span aria-hidden>{RESULT_META[result].letter}</span>
-                  <span className="sr-only">{RESULT_META[result].word}</span>
-                </span>
-              ) : (
-                <span className="size-[22px] shrink-0 rounded-[3px] border border-dashed border-line-strong">
-                  <span className="sr-only">Awaiting result</span>
-                </span>
-              )}
+              <ResultSquare result={result} />
               <span className="min-w-0">
                 <Link href={`/h/${h.id}`} className="block truncate font-semibold hover:underline">{h.title}</Link>
                 <span className="block text-[13px] text-muted">

@@ -1,4 +1,4 @@
-import type { HackathonDto, ProjectDto } from "@hackops/shared";
+import type { ProjectDetailDto, ProjectDto } from "@hackops/shared";
 import { EmptyState } from "@/components/shell/page-header";
 import { api } from "@/lib/api";
 import { getWorkspace } from "@/lib/workspace";
@@ -7,12 +7,11 @@ import { LinksForm, PickProject } from "./links";
 export default async function LinksTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const h = await getWorkspace(id);
-  const [projects, linked] = await Promise.all([
+  const [projects, detail] = await Promise.all([
     h.project ? Promise.resolve([] as ProjectDto[]) : api<ProjectDto[]>("/projects"),
-    // ponytail: counts sharing hackathons from the full list; a projectId filter on GET /hackathons can replace it if the list grows.
-    h.project ? api<HackathonDto[]>("/hackathons") : Promise.resolve([] as HackathonDto[]),
+    h.project ? api<ProjectDetailDto>(`/projects/${encodeURIComponent(h.project.id)}`) : null,
   ]);
-  const sharedWith = linked.filter((x) => x.projectId === h.projectId && x.id !== h.id).length;
+  const sharedWith = detail ? detail.hackathons.length - 1 : 0;
 
   return (
     <div className="flex flex-col gap-5">

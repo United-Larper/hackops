@@ -70,6 +70,14 @@ export type ProjectDto = {
   devpostUrl: string | null;
 };
 
+/** GET /projects: each project with how many hackathons it's linked to. */
+export type ProjectSummaryDto = ProjectDto & { entries: number };
+
+/** GET /projects/:id: the project plus every hackathon it was entered in, newest first. */
+export type ProjectDetailDto = ProjectDto & {
+  hackathons: { id: string; title: string; stage: Stage; result: HackathonResult | null; endsAt: string | null }[];
+};
+
 /** GET /hackathons/:id: everything a workspace needs in one read. */
 export type WorkspaceDto = HackathonDto & {
   assignments: AssignmentDto[];

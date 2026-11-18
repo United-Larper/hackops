@@ -202,3 +202,21 @@ describe("member history", () => {
     await http().get("/members/nope").expect(404);
   });
 });
+
+describe("projects", () => {
+  it("lists entry counts, and a project's hackathons with results, newest first", async () => {
+    const p = (await http().post("/projects").send({ name: "Banjir Watch", tech: ["Flutter"] }).expect(201)).body;
+    const old = await create({ ...KL, title: "Old Hack", endsAt: "2029-01-02T00:00:00Z" });
+    const recent = await create({ ...KL, title: "Recent Hack", endsAt: "2029-06-02T00:00:00Z" });
+    for (const h of [old, recent]) await http().patch(`/hackathons/${h.id}`).send({ projectId: p.id }).expect(200);
+    await http().post(`/hackathons/${old.id}/stage`).send({ stage: "results", result: "finalist" }).expect(200);
+
+    expect((await http().get("/projects").expect(200)).body).toMatchObject([{ name: "Banjir Watch", entries: 2 }]);
+    const detail = (await http().get(`/projects/${p.id}`).expect(200)).body;
+    expect(detail.tech).toEqual(["Flutter"]);
+    expect(detail.hackathons).toEqual([
+      { id: recent.id, title: "Recent Hack", stage: "discovered", result: null, endsAt: "2029-06-02T00:00:00.000Z" },
+      { id: old.id, title: "Old Hack", stage: "results", result: "finalist", endsAt: "2029-01-02T00:00:00.000Z" },
+    ]);
+  });
+});

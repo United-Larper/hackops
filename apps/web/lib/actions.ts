@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import type { HackathonResult, MemberInput, Stage } from "@hackops/shared";
+import type { HackathonResult, MemberInput, ProjectInput, Stage } from "@hackops/shared";
 import { api, ApiError } from "@/lib/api";
 
 export type MoveResult = { error?: string };
@@ -109,6 +109,25 @@ export async function saveMember(id: string | null, fields: MemberInput): Promis
 export async function removeMember(id: string): Promise<MoveResult> {
   const r = await write(() => api(`/members/${encodeURIComponent(id)}`, { method: "DELETE" }), "The member wasn't removed.");
   if (!r.error) redirect("/team");
+  return r;
+}
+
+/** Create or update a project; a new project opens on its own page. */
+export async function saveProject(id: string | null, fields: ProjectInput): Promise<MoveResult> {
+  let created: string | undefined;
+  const r = await write(async () => {
+    const body = JSON.stringify(fields);
+    if (id) await api(`/projects/${encodeURIComponent(id)}`, { method: "PATCH", body });
+    else created = (await api<{ id: string }>("/projects", { method: "POST", body })).id;
+  }, "The project didn't save.");
+  if (created) redirect(`/projects/${created}`);
+  return r;
+}
+
+/** Remove a project; the hackathons it was entered in keep their results and lose the link. */
+export async function removeProject(id: string): Promise<MoveResult> {
+  const r = await write(() => api(`/projects/${encodeURIComponent(id)}`, { method: "DELETE" }), "The project wasn't removed.");
+  if (!r.error) redirect("/projects");
   return r;
 }
 
