@@ -6,3 +6,5 @@ export const money = (amount: number, currency: string | null) => {
     return `${currency ?? ""} ${amount.toLocaleString("en-MY")}`.trim();
   }
 };
+
+export const ROLE_LABEL = { lead: "Lead", developer: "Developer", designer: "Designer", pitch: "Pitch" } as const;

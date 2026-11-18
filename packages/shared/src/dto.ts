@@ -91,4 +91,9 @@ export type MemberDto = {
   dietary: string | null;
 };
 
-export type TeamDto = { name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string };
+/** GET /members/:id: the member plus their past hackathons (Submitted or Results), newest first. */
+export type MemberDetailDto = MemberDto & {
+  history: { hackathon: { id: string; title: string; stage: Stage; endsAt: string | null }; role: Role; accountable: boolean; result: HackathonResult | null }[];
+};
+
+export type TeamDto ={ name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string };

@@ -1,5 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from "@nestjs/common";
-import { MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput } from "@hackops/shared";
+import {
+  ACTIVE_STAGES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, workload,
+  type HackathonResult, type MemberDetailDto, type Role, type Stage, type TeamWorkloadDto,
+} from "@hackops/shared";
 import { z } from "zod";
 import { ZodPipe } from "./common/zod.pipe";
 import { toMemberDto, toProjectDto, toTeamDto } from "./mappers";
@@ -20,6 +23,27 @@ export class MembersController {
   @Get()
   async list() {
     return (await this.db.member.findMany({ orderBy: { name: "asc" } })).map(toMemberDto);
+  }
+
+  @Get(":id")
+  async get(@Param("id") id: string): Promise<MemberDetailDto> {
+    const m = await this.db.member.findUniqueOrThrow({
+      where: { id },
+      include: { assignments: { where: { hackathon: { stage: { in: ["submitted", "results"] } } }, include: { hackathon: true } } },
+    });
+    const when = (h: { endsAt: Date | null; submissionDueAt: Date | null; updatedAt: Date }) => (h.endsAt ?? h.submissionDueAt ?? h.updatedAt).getTime();
+    const { assignments, ...member } = m;
+    return {
+      ...toMemberDto(member),
+      history: assignments
+        .sort((a, b) => when(b.hackathon) - when(a.hackathon))
+        .map(({ hackathon: h, role, accountable }) => ({
+          hackathon: { id: h.id, title: h.title, stage: h.stage as Stage, endsAt: h.endsAt?.toISOString() ?? null },
+          role: role as Role,
+          accountable,
+          result: h.result as HackathonResult | null,
+        })),
+    };
   }
 
   @Post()
@@ -78,6 +102,27 @@ export class TeamController {
   async get() {
     const team = await this.db.team.findUnique({ where: { id: "team" } });
     return team ? toTeamDto(team) : null;
+  }
+
+  @Get("team/workload")
+  async workload(): Promise<TeamWorkloadDto> {
+    const [members, rows] = await Promise.all([
+      this.db.member.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      this.db.hackathon.findMany({
+        where: { stage: { in: [...ACTIVE_STAGES] } },
+        include: { assignments: true, tasks: { select: { hackathonId: true, assigneeId: true, status: true } } },
+      }),
+    ]);
+    // Undated last; MAX_SAFE_INTEGER rather than Infinity so two undated rows compare as 0, not NaN.
+    const when = (h: (typeof rows)[number]) => (h.startsAt ?? h.submissionDueAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    rows.sort((a, b) => when(a) - when(b));
+    return {
+      hackathons: rows.map((h) => ({
+        id: h.id, title: h.title, stage: h.stage as Stage,
+        startsAt: h.startsAt?.toISOString() ?? null, endsAt: h.endsAt?.toISOString() ?? null, submissionDueAt: h.submissionDueAt?.toISOString() ?? null,
+      })),
+      members: workload(members, rows.map((h) => ({ ...h, assignments: h.assignments.map((a) => ({ ...a, role: a.role as Role })) })), rows.flatMap((h) => h.tasks)),
+    };
   }
 
   @Put("team")
