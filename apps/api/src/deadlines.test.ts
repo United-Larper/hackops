@@ -33,6 +33,19 @@ describe("GET /deadlines", () => {
     expect((await http().get("/deadlines?days=1").expect(200)).body).toEqual([]); // the window comes from ?days
   });
 
+  it("serves every in-scope deadline as a calendar feed, past ones included", async () => {
+    await db.task.deleteMany();
+    await db.hackathon.deleteMany();
+    const lastWeek = new Date(Date.now() - 7 * 86_400_000);
+    const h = await db.hackathon.create({ data: { source: "manual", title: "Done Hack", url: "https://example.com", mode: "online", stage: "submitted", judgingAt: lastWeek } });
+    await db.hackathon.create({ data: { source: "manual", title: "Scraped", url: "https://example.com/2", mode: "online", stage: "discovered", submissionDueAt: lastWeek } });
+
+    const res = await http().get("/calendar.ics").expect(200);
+    expect(res.headers["content-type"]).toMatch(/^text\/calendar/);
+    expect(res.text).toContain(`UID:${h.id}:judging@hackops`);
+    expect(res.text).not.toContain("Scraped");
+  });
+
   it("rejects a bad window", async () => {
     await http().get("/deadlines?days=0").expect(400);
     await http().get("/deadlines?days=abc").expect(400);

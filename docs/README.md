@@ -103,7 +103,7 @@ Concretely:
 
 ### 08 Deadlines and reminders
 - [x] 8.1 Due-soon endpoint and panel (with tests)
-- [ ] 8.2 Calendar feed
+- [x] 8.2 Calendar feed
 
 ### 09 Sign-up assist
 - [ ] 9.1 Team profile

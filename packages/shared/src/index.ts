@@ -9,3 +9,4 @@ export * from "./board";
 export * from "./skills";
 export * from "./workload";
 export * from "./deadlines";
+export * from "./ics";
