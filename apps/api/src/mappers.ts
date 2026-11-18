@@ -99,3 +99,6 @@ export async function fitTeam(db: PrismaService): Promise<FitTeam | null> {
   const [team, size] = await Promise.all([db.team.findUnique({ where: { id: "team" } }), db.member.count()]);
   return team ? { preferredCats: list(team.preferredCats), homeCity: team.homeCity, size: Math.max(1, size) } : null;
 }
+
+/** Sort key for "newest first": when the event ended, else its submission deadline, else its last edit. */
+export const newest = (h: { endsAt: Date | null; submissionDueAt: Date | null; updatedAt: Date }) => (h.endsAt ?? h.submissionDueAt ?? h.updatedAt).getTime();

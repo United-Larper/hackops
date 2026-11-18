@@ -104,4 +104,31 @@ export type MemberDetailDto = MemberDto & {
   history: { hackathon: { id: string; title: string; stage: Stage; endsAt: string | null }; role: Role; accountable: boolean; result: HackathonResult | null }[];
 };
 
-export type TeamDto ={ name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string };
+/** One public portfolio entry: a Submitted or Results hackathon. Public fields only; no contact or sign-up details, no internal notes. */
+export type PortfolioEntryDto = {
+  id: string;
+  title: string;
+  url: string;
+  organizer: string | null;
+  mode: Mode;
+  city: string | null;
+  country: string | null;
+  endsAt: string | null;
+  stage: "submitted" | "results";
+  result: HackathonResult | null;
+  categories: CategoryDto[];
+  project: Omit<ProjectDto, "id"> | null;
+  team: { id: string; name: string; role: Role }[];
+  /** Seed data (source "demo"): the page must label it, never present it as a real result. */
+  sample: boolean;
+};
+
+/** GET /portfolio: the team's name and pitch, entries newest first, and the filter options (from all entries, before filtering). */
+export type PortfolioDto = {
+  team: { name: string; pitch: string | null } | null;
+  entries: PortfolioEntryDto[];
+  members: MemberRefDto[];
+  categories: CategoryDto[];
+};
+
+export type TeamDto = { name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string };

@@ -85,6 +85,10 @@ export const HackathonQuery = z.object({
 });
 export type HackathonQuery = z.infer<typeof HackathonQuery>;
 
+/** GET /portfolio filters: `member` is the link a member puts in their CV. */
+export const PortfolioQuery = z.object({ category: z.string().max(100).optional(), member: z.string().max(100).optional() });
+export type PortfolioQuery = z.infer<typeof PortfolioQuery>;
+
 /** GET /hackathons/board filters. Online vs in person: hybrid events count as both. */
 export const BoardQuery = z.object({
   category: z.string().optional(),

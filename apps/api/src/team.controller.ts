@@ -5,7 +5,7 @@ import {
 } from "@hackops/shared";
 import { z } from "zod";
 import { ZodPipe } from "./common/zod.pipe";
-import { toMemberDto, toProjectDto, toTeamDto } from "./mappers";
+import { newest, toMemberDto, toProjectDto, toTeamDto } from "./mappers";
 import { PrismaService } from "./prisma.service";
 
 // Members, projects, the team row and categories: plain reads and writes, so the controllers call Prisma directly.
@@ -15,9 +15,6 @@ const jsonFields = <T extends Record<string, unknown>>(body: T, keys: (keyof T)[
   for (const k of keys) if (body[k] !== undefined) out[k as string] = JSON.stringify(body[k]);
   return out as { [K in keyof T]: K extends (typeof keys)[number] ? string : T[K] };
 };
-
-/** Sort key for "newest first": when the event ended, else its submission deadline, else its last edit. */
-const newest = (h: { endsAt: Date | null; submissionDueAt: Date | null; updatedAt: Date }) => (h.endsAt ?? h.submissionDueAt ?? h.updatedAt).getTime();
 
 @Controller("members")
 export class MembersController {
