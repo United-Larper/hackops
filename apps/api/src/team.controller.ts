@@ -113,7 +113,8 @@ export class TeamController {
         include: { assignments: true, tasks: { select: { hackathonId: true, assigneeId: true, status: true } } },
       }),
     ]);
-    const when = (h: (typeof rows)[number]) => (h.startsAt ?? h.submissionDueAt)?.getTime() ?? Infinity;
+    // Undated last; MAX_SAFE_INTEGER rather than Infinity so two undated rows compare as 0, not NaN.
+    const when = (h: (typeof rows)[number]) => (h.startsAt ?? h.submissionDueAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
     rows.sort((a, b) => when(a) - when(b));
     return {
       hackathons: rows.map((h) => ({
