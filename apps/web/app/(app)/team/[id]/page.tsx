@@ -10,7 +10,7 @@ import { ResultSquare } from "@/components/result";
 import { MYT } from "@/lib/time";
 import { MemberForm } from "../member-form";
 import { PasswordForm } from "./password-form";
-import { TwoStepForm } from "./two-step-form";
+// import { TwoStepForm } from "./two-step-form"; // two-step sign-in is off for now; see the member page below
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -37,12 +37,11 @@ export default async function MemberPage({ params }: Props) {
         <MemberForm key={m.id} member={m} />
         <div className="flex flex-col gap-5">
           <History m={m} />
-          {me.id === m.id && (
-            <>
-              <PasswordForm />
-              <TwoStepForm key={String(me.twoStep)} on={me.twoStep} />
-            </>
-          )}
+          {me.id === m.id && <PasswordForm />}
+          {/* Two-step sign-in is off for now: HackOps holds little worth a second factor, and codes are a hassle.
+              To bring it back, uncomment this line and the TwoStepForm import; the API, the sign-in form and
+              set-password already handle it. */}
+          {/* {me.id === m.id && <TwoStepForm key={String(me.twoStep)} on={me.twoStep} />} */}
         </div>
       </div>
     </>

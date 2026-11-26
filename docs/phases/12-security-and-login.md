@@ -65,6 +65,7 @@
 ### 12.8 Brute force
 - [x] Failed sign-ins are stored in `LoginFailure` (migration `login_failures`), per email and per browser address, and survive restarts.
 - [x] Two-step sign-in (migration `two_step`): optional per member, from their own page. `set-password` turns it off.
+- [x] Two-step hidden for now: its section on the member page is commented out (`team/[id]/page.tsx`). HackOps holds little worth a second factor, and codes were a hassle.
 - [x] Checks of your own password while signed in (password change, two-step on or off) count toward the same lockout.
 - [x] **Commits:** `feat(api): sign-in lockout survives restarts and limits by address`, `feat: two-step sign-in`
 
@@ -98,7 +99,7 @@
     - Locally every browser is 127.0.0.1, so there the address limit is effectively one global limit.
     - The API trusts `x-client-address` as sent. That's safe because only the web app can reach the API.
   - Passwords are 10–200 characters. Emails are lowercased by `MemberInput` and `LoginInput`.
-- **Two-step sign-in:**
+- **Two-step sign-in** (hidden: the member page doesn't show its section, so nobody can turn it on; everything below still works once that line is uncommented):
   - **Turning it on and off:**
     - It lives on your own page under Team. Set up shows a fresh key, which isn't saved yet.
     - Your password and a code from that key turn it on. That also signs out your other sessions.
