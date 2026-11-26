@@ -13,5 +13,5 @@ One optional module that switches on when an API key is set; the app works the s
 - **My tasks and per-member reminders:** now that members sign in (phase 12), a "my tasks" view and reminders per person make sense.
 - **Chat reminders:** Telegram or Discord bot posting the due-soon list each morning and same-day nudges.
 - **Overlap planner:** a calendar across all events with conflict warnings beyond the phase 06 overlap check.
-- **Hosting:** Vercel for web and API, Postgres from the Vercel Marketplace instead of SQLite (a Prisma adapter swap), discovery on a Vercel cron.
+- **Hosting on Vercel:** web and API on Vercel, Postgres from the Vercel Marketplace instead of SQLite (a Prisma adapter swap), discovery on a Vercel cron. Hosting on one machine behind HTTPS already works (phase 12.9, Hosting in the README); on Vercel the API is no longer private to the web app, so it would need its own client-address source and an API secret between the two.
 - **More sources:** Devfolio, Luma, Eventbrite, Taikai.

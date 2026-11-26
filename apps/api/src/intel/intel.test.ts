@@ -8,7 +8,7 @@ import { PrismaService } from "../prisma.service";
 import { signedIn, TESTER } from "../../test/auth";
 import { isDevpost, parseGallery, parsePrizes, parseProject } from "./past-winners";
 import { get } from "../discovery/http";
-import { checkSubmission, pointsInward } from "./submission-check";
+import { checkSubmission, guardedLookup, pointsInward } from "./submission-check";
 
 // No real DNS in tests: "intranet.test" lives on a private address, every other host on a public one.
 vi.mock("node:dns/promises", () => ({
@@ -116,6 +116,12 @@ describe("pre-submission check", () => {
     expect(items.find((i) => i.key === "demo")).toMatchObject({ ok: false, detail: expect.stringMatching(/private address/) });
     expect(items.find((i) => i.key === "video")).toMatchObject({ ok: false, detail: expect.stringMatching(/private address/) });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a private address at connect time too, so a name can't switch answers after the check", async () => {
+    const connect = (host: string) => new Promise<unknown>((resolve) => guardedLookup(host, {}, (err, address) => resolve(err ? (err as NodeJS.ErrnoException).code : address)));
+    expect(await connect("intranet.test")).toBe("EPRIVATE");
+    expect(await connect("app.example.com")).toBe("93.184.216.34");
   });
 
   it("says a slow link timed out, and a dead one couldn't connect", async () => {

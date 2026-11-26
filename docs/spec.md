@@ -108,7 +108,7 @@ Full Prisma schema in [phases/02-core-data-and-api.md](phases/02-core-data-and-a
 - **Project**: name, description, tech, repo, demo, video, slides and Devpost links. Linked to many hackathons.
 - **Activity**: a hackathon's feed: automatic change entries and manual notes.
 - **Team**: one row: team name, pitch blurb, preferred tech, home city. Feeds the fit score and the sign-up assist.
-- **MemberSecret**: one per member, kept apart from Member so a Member row can never leak it: scrypt password hash, and the member's own bookmarklet and calendar-feed token.
+- **MemberSecret**: one per member, kept apart from Member so a Member row can never leak it: scrypt password hash, the two-step sign-in key and the last code step used, and the member's own bookmarklet and calendar-feed token.
 - **Session**: a signed-in browser. Only the SHA-256 of the token is stored; the token lives in an httpOnly cookie. 14 days.
 
 ## 7. Fit score

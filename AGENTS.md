@@ -14,9 +14,10 @@ The team's hackathon manager: discovery, a workspace per hackathon, team workloa
 - `GET /signup-profile` is the only route with open CORS (the bookmarklet calls it from third-party pages). It needs a member's own `fillToken` and returns only that member's sign-up fields plus the team name and pitch; never add CORS anywhere else.
 - Every API route needs a signed-in session except the `PUBLIC` list in `apps/api/src/auth.ts`. Adding a route there makes it reachable by anyone on this computer: it needs a reason in its comment and its own check (like a token).
 - Secrets (password hashes, fill tokens) live only in `MemberSecret`, never on `Member`: `toMemberDto` spreads the Member row. Session tokens are stored only as SHA-256 hashes.
-- The API binds to `127.0.0.1` (`main.ts`). Don't change the default; `HOST` exists to expose it on purpose.
-- Outbound fetches of user-typed URLs go through `pointsInward()` (`apps/api/src/intel/submission-check.ts`) first; scraper fetches go through `get()` in `apps/api/src/discovery/http.ts`, which refuses redirects off the source's site.
+- The API binds to `127.0.0.1` (`main.ts`), also when hosted: only the web app reaches it, and it trusts the `x-client-address` the web app sends. The web app serves `/signup-profile` and `/calendar.ics` through rewrites in `next.config.ts`, and `proxy.ts` lists them as public.
+- Outbound fetches of user-typed URLs go through `pointsInward()` (`apps/api/src/intel/submission-check.ts`) first and use its `guarded` dispatcher, whose DNS lookup refuses private addresses at connect time; scraper fetches go through `get()` in `apps/api/src/discovery/http.ts`, which refuses redirects off the source's site.
 - In `apps/web/`, any `catch` around `api()` starts with `unstable_rethrow(e)`, or it swallows the redirect to /login on an expired session. Server actions need no CSRF code: Next.js rejects cross-origin action posts.
+- Pages carry a nonce CSP from `proxy.ts`: no inline `<script>` and no third-party scripts. Signed-in checks of your own password (password change, two-step) answer 403, so `lib/api.ts` can keep treating every 401 except sign-in as an expired session.
 - Never cut corners on validation at the API boundary, escaping scraped text before showing it, scraper rate limits, or anything that submits a form in the team's name.
 - UI work uses the impeccable and ui-ux-pro-max skills against `apps/web/DESIGN.md`. Icons and the logo are SVG files in `apps/web/public/`, never a React icon package.
 

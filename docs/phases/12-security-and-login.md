@@ -23,6 +23,7 @@
 - No auth library: `node:crypto` scrypt, random tokens and a Prisma table.
 - No email: `set-password` prints a temporary password for the first sign-in or a forgotten one.
 - The sign-in rate limit is one SQLite table (`LoginFailure`), not a cache or a library.
+- Two-step codes are TOTP from `node:crypto` (about 30 lines). There's no QR code library, so the key is shown as text plus an `otpauth://` link.
 
 ## Implementation
 
@@ -61,6 +62,20 @@
 - [x] `.github/workflows/check.yml` runs `pnpm check` and the web build.
 - [x] **Docs:** spec, README, AGENTS.md and phase 11.
 
+### 12.8 Brute force
+- [x] Failed sign-ins are stored in `LoginFailure` (migration `login_failures`), per email and per browser address, and survive restarts.
+- [x] Two-step sign-in (migration `two_step`): optional per member, from their own page. `set-password` turns it off.
+- [x] Checks of your own password while signed in (password change, two-step on or off) count toward the same lockout.
+- [x] **Commits:** `feat(api): sign-in lockout survives restarts and limits by address`, `feat: two-step sign-in`
+
+### 12.9 Ready to host
+- [x] A nonce-based script CSP on every page (`proxy.ts`), and HSTS when `SITE_URL` is https.
+- [x] The link check refuses private addresses at connect time too, which closes DNS rebinding.
+- [x] The bookmarklet and the calendar feed go through the web app, so the API never faces the internet.
+- [x] The sign-in limit reads the last `x-forwarded-for` entry, the one a proxy added.
+- [x] **Docs:** Hosting in the README, AGENTS.md.
+- [x] **Commit:** `feat: ready to host behind https`
+
 ## As built
 
 - **Public API routes**, listed in `PUBLIC` in `apps/api/src/auth.ts`:
@@ -76,8 +91,29 @@
   - Failed sign-ins are rows in `LoginFailure` (migration `login_failures`), so an API restart doesn't lift a lockout. Rows older than 15 minutes are deleted on each sign-in attempt.
   - 429 after 5 failures per email (guessing one password, from any address) or 30 per browser address (trying many emails) within 15 minutes. The right password waits too.
   - A successful sign-in clears that email's failures; `set-password` clears them as well, since the lockout message points people to it.
-  - The address comes from the web sign-in action (`x-forwarded-for`, which Next fills from the socket) as `x-client-address`. It's trusted as sent (`ponytail:`): fine while both servers listen on 127.0.0.1, where every browser is 127.0.0.1 and the address limit is effectively a global one. A hosted API must take it from its proxy.
+  - **The address:**
+    - The web sign-in action sends the **last** `x-forwarded-for` entry as `x-client-address`.
+    - Next adds the socket address only when that header is missing, so earlier entries are whatever the browser sent.
+    - Behind one reverse proxy (see Hosting in the README), the last entry is the browser's real address. Behind two, it would be the first proxy's address (`ponytail:`; take the entry for the right hop if that ever happens).
+    - Locally every browser is 127.0.0.1, so there the address limit is effectively one global limit.
+    - The API trusts `x-client-address` as sent. That's safe because only the web app can reach the API.
   - Passwords are 10–200 characters. Emails are lowercased by `MemberInput` and `LoginInput`.
+- **Two-step sign-in:**
+  - **Turning it on and off:**
+    - It lives on your own page under Team. Set up shows a fresh key, which isn't saved yet.
+    - Your password and a code from that key turn it on. That also signs out your other sessions.
+    - Turning it off takes your password and a current code.
+  - **Signing in:**
+    - After the right password, the API answers 401 with `code: "two_step"`, and the form shows a code field.
+    - The form keeps the email and password in browser state, so nothing is retyped.
+  - **Codes:**
+    - RFC 6238 (SHA-1, 6 digits, 30 seconds), accepting one step of clock drift either way.
+    - `totpLastStep` makes each code work once, including the one that turned it on.
+    - Wrong codes count toward the 5-per-email lockout.
+  - **Recovery:** `set-password` clears the key, for a lost phone. There are no recovery codes: a teammate with the terminal is the recovery path.
+  - **Checking your own password while signed in:**
+    - It counts toward the lockout, under the address `member:<id>`.
+    - It answers 403 when wrong, so `lib/api.ts` can treat every 401 except on sign-in as a lost session.
 - **Who did what:** `logActivity` reads the signed-in member from `AsyncLocalStorage`, so every change line and note records its author with no change at the call sites. The Activity tab shows the name on change lines, and the note form lost its "From" picker. Cron jobs and the seed write with no author.
 - **Web:**
   - `proxy.ts` (Next 16's name for middleware) only checks that the cookie exists. It sends you to `/login?next=…` and skips `/login`, `/portfolio`, `/fill.js` and static files.
@@ -90,14 +126,32 @@
   - Settings → New secret rotates your own token, which retires your old bookmarklet and calendar link together.
   - `fill.js` offers you, or team only.
   - The calendar link moved from the README to Settings.
-- **Headers** (`next.config.ts`): `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, `strict-origin-when-cross-origin`, a Permissions-Policy, and no `X-Powered-By`. There's no script CSP: Next's inline scripts would need nonces (`ponytail:`).
+- **Headers:**
+  - **`next.config.ts`, on every response:**
+    - `X-Frame-Options: DENY` and `frame-ancestors 'none'`;
+    - `nosniff`, `strict-origin-when-cross-origin` and a Permissions-Policy;
+    - no `X-Powered-By`;
+    - with an https `SITE_URL`, also `Strict-Transport-Security` (one year).
+  - **`proxy.ts`, on pages:** a CSP with a fresh nonce for each request.
+    - The policy: `script-src 'self' 'nonce-…' 'strict-dynamic'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`.
+    - Development adds `'unsafe-eval'`, and an https `SITE_URL` adds `upgrade-insecure-requests`.
+    - Next reads the nonce from the request header and puts it on its own scripts.
+  - **Styles:** `style-src` keeps `'unsafe-inline'`. The board, the progress bars and the icons set `style` attributes, and styles can't run code.
+  - **The 404 page:** every page but `/_not-found` already renders per request. The prerendered 404 still shows, but its scripts don't run (no nonce), so it's plain text and links.
+- **One public address:**
+  - `next.config.ts` rewrites `/signup-profile` and `/calendar.ics` to the API, and `proxy.ts` lets them through without a session.
+  - `fill.js` fetches from the address it was loaded from.
+  - Settings shows the calendar link on `SITE_URL`, or else on the address the browser used.
+  - The API keeps its own CORS header on `/signup-profile`, and the rewrite passes it through.
 - **Outbound fetches:**
   - `pointsInward()` resolves the link's host and refuses loopback, 10/8, 172.16/12, 192.168/16, 169.254/16, 100.64/10, `::1`, `fc00::/7` and `fe80::/10`.
   - Node's `BlockList` checks IPv4-mapped IPv6 against the IPv4 rules itself, so no `::ffff:0:0/96` rule (it would block every IPv4).
-  - DNS rebinding between the check and the fetch is a known gap (`ponytail:`).
+  - **DNS rebinding:** the fetch itself uses an undici `Agent` whose `connect.lookup` (`guardedLookup`) refuses private addresses. So a name that answers differently for the check and the fetch can't get in.
+  - `pointsInward()` stays, for the clear message and for links written as IP addresses, which skip DNS.
+  - `undici` is a new API dependency, only for that `Agent`. It's Node's own fetch library, the same 7.x line Node 24 ships.
   - Scraper `get()` throws if the final URL's last two host labels differ from the request's.
 - **Verified:**
-  - `pnpm check`: shared 48, api 55.
+  - `pnpm check`: shared 48, api 60.
   - `pnpm audit --prod`: clean. `effect` is pinned to `^3.22.1` in `pnpm-workspace.yaml` (GHSA-7589-6fvf-x4pw, via Prisma's config loader); `>=3.22.1` pulled effect 4, which breaks Prisma.
   - `curl`:
     - signed-out `/members` gives 401; `/portfolio` gives 200 with no emails;
@@ -110,4 +164,12 @@
     - a password change works, and the old password stops working;
     - no password form on someone else's page;
     - sign out, then `/team` sends you to `/login` and `/portfolio` stays open.
-- **Not checked:** the sign-in page at 375 px; the browser window couldn't be resized in this session.
+- **Verified for 12.8 and 12.9**, against `next build` + `next start` and the built API:
+  - **CSP:** the sign-in page's 12 scripts all carry the request's nonce. Sign-in, Settings and a member page hydrate, with no CSP errors in the console.
+  - **Rewrites:** `/calendar.ics?token=` and `/signup-profile?token=` answer 200 through the web app (the latter with `access-control-allow-origin: *`), and 404 for a bad token.
+  - **Two-step, in Chrome:**
+    - Set up, then turned it on with a code typed as "613 784".
+    - Signing in again asked for a code without clearing the email or password, and a fresh code got in.
+    - `set-password` turned it off and signed the member out.
+  - **Guarded fetch:** a real `fetch` through the guarded `Agent` to a live server on 127.0.0.1, by the name `localhost`, is refused with `EPRIVATE`. Plain `fetch` reaches it.
+  - **Width:** checked in a window 502 px wide, not quite 375 px.

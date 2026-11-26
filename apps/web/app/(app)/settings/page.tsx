@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import type { CategoryDto, MeDto, MemberDto, TeamDto } from "@hackops/shared";
 import { EmptyState, PageHeader } from "@/components/shell/page-header";
-import { api, API_URL, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { logout } from "@/lib/actions";
 import { initials } from "@/lib/workspace";
 import { Bookmarklet } from "./bookmarklet";
@@ -36,9 +36,9 @@ export default async function SettingsPage() {
     unstable_rethrow(e); // let the sign-in redirect through
     error = e instanceof ApiError ? e.message : "Couldn't load the settings.";
   }
-  // The bookmarklet loads fill.js from this app, at the address the browser used to open it.
+  // The bookmarklet and the calendar link use this app's address: SITE_URL when hosted, else the one the browser used.
   const host = (await headers()).get("host") ?? "";
-  const origin = /^[\w.-]+(:\d+)?$/.test(host) ? `http://${host}` : "http://localhost:3200";
+  const origin = process.env.SITE_URL?.replace(/\/$/, "") ?? (/^[\w.-]+(:\d+)?$/.test(host) ? `http://${host}` : "http://localhost:3200");
   const ready = members.filter((m) => SIGNUP_FIELDS.every(([k]) => m[k])).length;
 
   return (
@@ -121,7 +121,7 @@ export default async function SettingsPage() {
                 <p className="max-w-[62ch] text-[15px] leading-relaxed text-muted">
                   Every deadline and open task, with reminders. Subscribe from Outlook or Apple Calendar on this computer, or open it and import the file into Google Calendar. It uses the same secret as your bookmarklet, so a new secret retires this link too.
                 </p>
-                <code className="block overflow-x-auto rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] whitespace-nowrap">{`${API_URL}/calendar.ics?token=${me.fillToken}`}</code>
+                <code className="block overflow-x-auto rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] whitespace-nowrap">{`${origin}/calendar.ics?token=${me.fillToken}`}</code>
               </div>
             ) : (
               <EmptyState title="Make your secret first">The calendar link uses the same secret as your bookmarklet. Make the bookmarklet above and the link appears here.</EmptyState>

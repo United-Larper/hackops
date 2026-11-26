@@ -17,7 +17,7 @@ HackOps is the team's hackathon manager. It finds hackathons, runs each one as a
 | [phases/09-signup-assist.md](phases/09-signup-assist.md) | Team profile and the bookmarklet that fills registration forms |
 | [phases/10-win-intelligence.md](phases/10-win-intelligence.md) | "What wins here", prize-track finder, pre-submission check |
 | [phases/11-later.md](phases/11-later.md) | **Later, don't start.** AI hook, chat reminders, hosting |
-| [phases/12-security-and-login.md](phases/12-security-and-login.md) | Per-member sign-in, the API locked to signed-in members, per-member bookmarklet tokens, safer outbound fetches, CI |
+| [phases/12-security-and-login.md](phases/12-security-and-login.md) | Per-member sign-in with optional two-step codes, the API locked to signed-in members, per-member bookmarklet tokens, safer outbound fetches, a script CSP and a hosting guide, CI |
 
 ## How to use the phases
 
@@ -127,3 +127,5 @@ Concretely:
 - [x] 12.5 Per-member bookmarklet and calendar tokens (with tests)
 - [x] 12.6 Safer outbound fetches (with tests)
 - [x] 12.7 CI and docs
+- [x] 12.8 Brute force: stored lockout, two-step sign-in (with tests)
+- [x] 12.9 Ready to host: script CSP, rebinding-proof link check, one public address (with tests)
