@@ -21,3 +21,5 @@ apps/web/.impeccable/mocks/
 # BMAD: local to this workspace, never committed
 _bmad/
 _bmad-output/
+*.db-wal
+*.db-shm
