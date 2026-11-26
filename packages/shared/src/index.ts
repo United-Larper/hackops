@@ -10,3 +10,4 @@ export * from "./skills";
 export * from "./workload";
 export * from "./deadlines";
 export * from "./ics";
+export * from "./field-match";

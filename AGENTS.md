@@ -11,6 +11,7 @@ The team's hackathon manager: discovery, a workspace per hackathon, team workloa
 - No AI attribution in commits or PRs: no `Co-Authored-By` trailer and no "Generated with" line.
 - Never invent real hackathons: `apps/api/data/my-hackathons.json` ships empty on purpose. Seed and demo rows carry `source: "demo"`.
 - `GET /portfolio` is public. Add each field by hand in `apps/api/src/portfolio.controller.ts`, never by spreading a model. Member contact and sign-up fields, decision notes, retro text and result notes never leave the API.
+- `GET /signup-profile` is the only route with open CORS (the bookmarklet calls it from third-party pages). It needs the team's `fillToken` and returns sign-up fields only; never add CORS anywhere else.
 - Never cut corners on validation at the API boundary, escaping scraped text before showing it, scraper rate limits, or anything that submits a form in the team's name.
 - UI work uses the impeccable and ui-ux-pro-max skills against `apps/web/DESIGN.md`. Icons and the logo are SVG files in `apps/web/public/`, never a React icon package.
 

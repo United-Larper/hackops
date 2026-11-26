@@ -106,8 +106,8 @@ Concretely:
 - [x] 8.2 Calendar feed
 
 ### 09 Sign-up assist
-- [ ] 9.1 Team profile
-- [ ] 9.2 Bookmarklet (with tests)
+- [x] 9.1 Team profile
+- [x] 9.2 Bookmarklet (with tests)
 
 ### 10 Win intelligence
 - [ ] 10.1 "What wins here" (with tests)

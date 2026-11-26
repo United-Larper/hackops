@@ -137,4 +137,5 @@ model Team {
   preferredTech String  @default("[]") // JSON: string[]
   preferredCats String  @default("[]") // JSON: category slugs
   homeCity      String  @default("Kuala Lumpur")
+  fillToken     String? // secret in the sign-up bookmarklet; GET /signup-profile needs it
 }
