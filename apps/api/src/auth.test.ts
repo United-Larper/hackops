@@ -11,7 +11,8 @@ let app: INestApplication;
 let db: PrismaService;
 let http: Awaited<ReturnType<typeof signedIn>>["http"];
 const anon = () => request(app.getHttpServer());
-const login = (email: string, password: string) => anon().post("/auth/login").send({ email, password });
+const login = (email: string, password: string, address = "203.0.113.7") =>
+  anon().post("/auth/login").set("x-client-address", address).send({ email, password });
 
 beforeAll(async () => {
   const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -21,6 +22,7 @@ beforeAll(async () => {
 afterAll(() => app.close());
 beforeEach(async () => {
   await db.session.deleteMany();
+  await db.loginFailure.deleteMany();
   await db.activity.deleteMany();
   await db.hackathon.deleteMany();
   http = (await signedIn(app, db)).http;
@@ -75,9 +77,27 @@ describe("POST /auth/login", () => {
     expect(wrong.message).toBe(unknown.message);
   });
 
-  it("locks an email after five failures", async () => {
-    for (let i = 0; i < 5; i++) await login("locked@example.com", "wrong password").expect(401);
-    await login("locked@example.com", "wrong password").expect(429);
+  it("locks an email after five failures, from any address, and an API restart doesn't lift it", async () => {
+    for (let i = 0; i < 5; i++) await login(TESTER_EMAIL, "wrong password", `198.51.100.${i}`).expect(401);
+    await login(TESTER_EMAIL, TESTER_PASSWORD, "198.51.100.99").expect(429); // even the right password waits
+
+    const again = await (await Test.createTestingModule({ imports: [AppModule] }).compile()).createNestApplication().init();
+    await request(again.getHttpServer()).post("/auth/login").send({ email: TESTER_EMAIL, password: TESTER_PASSWORD }).expect(429);
+    await again.close();
+  });
+
+  it("locks an address that tries many emails", async () => {
+    // 29 recorded failures (each real one costs a scrypt run), then the 30th through the API.
+    await db.loginFailure.createMany({ data: Array.from({ length: 29 }, (_, i) => ({ email: `guess${i}@example.com`, address: "192.0.2.50" })) });
+    await login("guess29@example.com", "wrong password", "192.0.2.50").expect(401);
+    await login(TESTER_EMAIL, TESTER_PASSWORD, "192.0.2.50").expect(429);
+    await login(TESTER_EMAIL, TESTER_PASSWORD, "192.0.2.51").expect(201); // another address isn't affected
+  });
+
+  it("forgets an email's failures once it signs in", async () => {
+    for (let i = 0; i < 4; i++) await login(TESTER_EMAIL, "wrong password").expect(401);
+    await login(TESTER_EMAIL, TESTER_PASSWORD).expect(201);
+    expect(await db.loginFailure.count({ where: { email: TESTER_EMAIL } })).toBe(0);
   });
 });
 

@@ -1,26 +1,35 @@
 import { randomBytes } from "node:crypto";
-import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, UnauthorizedException } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, HttpException, HttpStatus, Post, UnauthorizedException } from "@nestjs/common";
 import { LoginInput, PasswordInput, type MeDto, type SessionDto } from "@hackops/shared";
 import { currentSession, hashPassword, newToken, SESSION_DAYS, sha256, verifyPassword } from "./auth";
 import { ZodPipe } from "./common/zod.pipe";
 import { PrismaService } from "./prisma.service";
 
 const WRONG = "Email or password is wrong";
-const MAX_FAILURES = 5;
+/** Failed sign-ins allowed per 15 minutes: per email (guessing one password), per address (trying many emails). */
+const MAX_PER_EMAIL = 5;
+const MAX_PER_ADDRESS = 30;
 const WINDOW_MS = 15 * 60_000;
 
 @Controller("auth")
 export class AuthController {
-  // ponytail: failed sign-ins per email, in memory; fine for one local API process, move to a table if it ever runs as several.
-  private readonly failures = new Map<string, number[]>();
-
   constructor(private readonly db: PrismaService) {}
 
   @Post("login")
-  async login(@Body(new ZodPipe(LoginInput)) body: LoginInput): Promise<SessionDto> {
+  /**
+   * `x-client-address` is the browser's address, passed on by the web app's sign-in action.
+   * ponytail: trusted as sent, which is fine while the API only listens on 127.0.0.1; a hosted API must take it from its proxy instead.
+   */
+  async login(@Body(new ZodPipe(LoginInput)) body: LoginInput, @Headers("x-client-address") clientAddress?: string): Promise<SessionDto> {
     const now = Date.now();
-    const recent = (this.failures.get(body.email) ?? []).filter((t) => now - t < WINDOW_MS);
-    if (recent.length >= MAX_FAILURES) {
+    const address = (clientAddress ?? "").slice(0, 64) || "unknown";
+    const since = new Date(now - WINDOW_MS);
+    await this.db.loginFailure.deleteMany({ where: { at: { lt: since } } }); // the window only needs the last 15 minutes
+    const [byEmail, byAddress] = await Promise.all([
+      this.db.loginFailure.count({ where: { email: body.email, at: { gte: since } } }),
+      this.db.loginFailure.count({ where: { address, at: { gte: since } } }),
+    ]);
+    if (byEmail >= MAX_PER_EMAIL || byAddress >= MAX_PER_ADDRESS) {
       throw new HttpException("Too many tries. Wait 15 minutes, or ask a teammate to run set-password for you.", HttpStatus.TOO_MANY_REQUESTS);
     }
     const member = body.email
@@ -29,10 +38,10 @@ export class AuthController {
     // Always one scrypt run, so the answer time doesn't tell which emails have accounts.
     const ok = await verifyPassword(body.password, member?.secret?.passwordHash);
     if (!member || !ok) {
-      this.failures.set(body.email, [...recent, now]);
+      await this.db.loginFailure.create({ data: { email: body.email.slice(0, 200), address } });
       throw new UnauthorizedException(WRONG);
     }
-    this.failures.delete(body.email);
+    await this.db.loginFailure.deleteMany({ where: { email: body.email } });
 
     const token = newToken();
     const expiresAt = new Date(now + SESSION_DAYS * 86_400_000);

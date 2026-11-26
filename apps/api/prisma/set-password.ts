@@ -1,5 +1,5 @@
 // Sets a random temporary password for one member and prints it once: the first-run and "forgot password" path,
-// since HackOps sends no email. Signs that member out everywhere. Usage: pnpm --filter api set-password <email>
+// since HackOps sends no email. Signs that member out everywhere and lifts any sign-in lockout on their email. Usage: pnpm --filter api set-password <email>
 import { randomBytes } from "node:crypto";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -26,6 +26,7 @@ async function main() {
   await db.$transaction([
     db.memberSecret.upsert({ where: { memberId: member.id }, create: { memberId: member.id, passwordHash }, update: { passwordHash } }),
     db.session.deleteMany({ where: { memberId: member.id } }),
+    db.loginFailure.deleteMany({ where: { email: email! } }), // a reset also lifts a sign-in lockout
   ]);
   console.log(`Temporary password for ${member.name} (${email}):\n\n  ${password}\n\nSign in with it, then change it on your own page under Team.`);
 }

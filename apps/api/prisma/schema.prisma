@@ -158,3 +158,15 @@ model Team {
   preferredCats String  @default("[]") // JSON: category slugs
   homeCity      String  @default("Kuala Lumpur")
 }
+
+// Failed sign-ins in the last 15 minutes, by email and by the browser's address. In the database so an API
+// restart doesn't reset the lockout.
+model LoginFailure {
+  id      String   @id @default(cuid())
+  email   String
+  address String
+  at      DateTime @default(now())
+
+  @@index([email, at])
+  @@index([address, at])
+}

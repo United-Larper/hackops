@@ -73,7 +73,10 @@
   Everything else needs `Authorization: Bearer <session token>`. Sessions last 14 days, and expired ones are removed when met or at the next sign-in. A password change signs out your other sessions; `set-password` signs out all of that member's sessions.
 - **Sign-in:**
   - The answer is the same for a wrong password and an unknown email, and both cost one scrypt run.
-  - Five failures per email in 15 minutes give 429. In memory (`ponytail:`), so an API restart clears it.
+  - Failed sign-ins are rows in `LoginFailure` (migration `login_failures`), so an API restart doesn't lift a lockout. Rows older than 15 minutes are deleted on each sign-in attempt.
+  - 429 after 5 failures per email (guessing one password, from any address) or 30 per browser address (trying many emails) within 15 minutes. The right password waits too.
+  - A successful sign-in clears that email's failures; `set-password` clears them as well, since the lockout message points people to it.
+  - The address comes from the web sign-in action (`x-forwarded-for`, which Next fills from the socket) as `x-client-address`. It's trusted as sent (`ponytail:`): fine while both servers listen on 127.0.0.1, where every browser is 127.0.0.1 and the address limit is effectively a global one. A hosted API must take it from its proxy.
   - Passwords are 10–200 characters. Emails are lowercased by `MemberInput` and `LoginInput`.
 - **Who did what:** `logActivity` reads the signed-in member from `AsyncLocalStorage`, so every change line and note records its author with no change at the call sites. The Activity tab shows the name on change lines, and the note form lost its "From" picker. Cron jobs and the seed write with no author.
 - **Web:**
@@ -94,7 +97,8 @@
   - DNS rebinding between the check and the fetch is a known gap (`ponytail:`).
   - Scraper `get()` throws if the final URL's last two host labels differ from the request's.
 - **Verified:**
-  - `pnpm check`: shared 48, api 53.
+  - `pnpm check`: shared 48, api 55.
+  - `pnpm audit --prod`: clean. `effect` is pinned to `^3.22.1` in `pnpm-workspace.yaml` (GHSA-7589-6fvf-x4pw, via Prisma's config loader); `>=3.22.1` pulled effect 4, which breaks Prisma.
   - `curl`:
     - signed-out `/members` gives 401; `/portfolio` gives 200 with no emails;
     - a form-encoded stage change gives 401; the 6th wrong sign-in gives 429;

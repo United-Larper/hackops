@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import type { HackathonResult, MemberInput, PrizeTrack, ProjectInput, SessionDto, Stage, TeamInput } from "@hackops/shared";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { api, ApiError, SESSION_COOKIE } from "@/lib/api";
 
 export type MoveResult = { error?: string };
@@ -181,7 +181,13 @@ const safeNext = (next: unknown) =>
 export async function login(_: MoveResult & { email?: string }, fd: FormData): Promise<MoveResult & { email?: string }> {
   let session: SessionDto;
   try {
-    session = await api<SessionDto>("/auth/login", { method: "POST", body: JSON.stringify({ email: fd.get("email"), password: fd.get("password") }) });
+    // The API limits failed sign-ins per browser address too; Next puts the address in x-forwarded-for.
+    const address = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "";
+    session = await api<SessionDto>("/auth/login", {
+      method: "POST",
+      headers: { "x-client-address": address },
+      body: JSON.stringify({ email: fd.get("email"), password: fd.get("password") }),
+    });
   } catch (e) {
     // The email comes back so the form keeps it (React resets a form after its action); the password never does.
     return { error: e instanceof ApiError ? e.message : "Couldn't sign in.", email: String(fd.get("email") ?? "") };
