@@ -45,4 +45,9 @@ describe("upcomingDeadlines", () => {
   it("sorts soonest first across hackathons and tasks", () => {
     expect(ids([hack("a", "building", { sub: inH(30) })], [task("t", "a", inH(2))])).toEqual(["task:t", "a:submission"]);
   });
+
+  it("lists a failing pre-submission check at the submission deadline, on active hackathons only", () => {
+    const hs = [hack("a", "building", { sub: inH(5) }), hack("b", "submitted", { sub: inH(5) }), hack("c", "building", { sub: inH(5) })];
+    expect(upcomingDeadlines(hs, [], now, 7, ["a", "b"]).map((i) => i.id)).toEqual(["a:submission", "c:submission", "a:check"]);
+  });
 });

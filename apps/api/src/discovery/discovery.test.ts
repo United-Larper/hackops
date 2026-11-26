@@ -106,13 +106,14 @@ describe("refresh", () => {
     expect(await db.hackathon.count()).toBe(1);
   });
 
-  it("keeps the team's stage and category edits when the source updates", async () => {
+  it("keeps the team's stage, category and prize-track edits when the source updates", async () => {
     await discovery.refresh({ devpost: async () => [item()] });
     const h = await db.hackathon.findFirstOrThrow();
-    await db.hackathon.update({ where: { id: h.id }, data: { stage: "interested", categories: { set: [{ slug: "fintech" }] } } });
+    const tracks = JSON.stringify([{ name: "Best AI", entering: true }]);
+    await db.hackathon.update({ where: { id: h.id }, data: { stage: "interested", prizeTracks: tracks, categories: { set: [{ slug: "fintech" }] } } });
     await discovery.refresh({ devpost: async () => [item({ prizeAmount: 9000 })] });
     const after = await db.hackathon.findFirstOrThrow({ include: { categories: true } });
-    expect(after).toMatchObject({ stage: "interested", prizeAmount: 9000 });
+    expect(after).toMatchObject({ stage: "interested", prizeAmount: 9000, prizeTracks: tracks });
     expect(after.categories.map((c) => c.slug)).toEqual(["fintech"]);
   });
 

@@ -2,6 +2,8 @@ import type { HackathonResult, Mode, Region, Role, Source, TaskStatus } from "./
 import type { Phase, Stage } from "./lifecycle";
 import type { PrizeTrack } from "./schemas";
 import type { Fit } from "./fit";
+import type { TrackFit } from "./tracks";
+import type { WinnersBrief } from "./winners";
 
 // What the API returns. Dates are ISO strings (UTC); the web formats them in Asia/Kuala_Lumpur.
 
@@ -79,7 +81,9 @@ export type ProjectDetailDto = ProjectDto & {
 };
 
 /** GET /hackathons/:id: everything a workspace needs in one read. */
-export type WorkspaceDto = HackathonDto & {
+export type WorkspaceDto = Omit<HackathonDto, "prizeTracks"> & {
+  /** Each track with the prize-track finder's verdict for the linked project's tech and the event's categories. */
+  prizeTracks: (PrizeTrack & { fit: TrackFit })[];
   assignments: AssignmentDto[];
   tasks: TaskDto[];
   project: ProjectDto | null;
@@ -139,3 +143,10 @@ export type SignupProfileDto = {
   team: { name: string; pitch: string | null };
   members: { id: string; name: string; email: string | null; githubUrl: string | null; linkedinUrl: string | null; organisation: string | null; tshirtSize: string | null; dietary: string | null }[];
 };
+
+/** GET /hackathons/:id/winners. `brief` is null for events without past Devpost data (not Devpost, no organizer, no past editions). */
+export type WinnersDto = { organizer: string | null; brief: WinnersBrief | null };
+
+/** One line of the pre-submission check. `ok` is null when it couldn't be checked (e.g. a repo not on GitHub). */
+export type CheckItem = { key: "repo" | "readme" | "video" | "demo" | "checklist" | "tracks"; label: string; ok: boolean | null; detail: string };
+export type SubmissionCheckDto = { checkedAt: string; items: CheckItem[] };

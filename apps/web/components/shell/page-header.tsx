@@ -26,7 +26,7 @@ const toFixture = (d: GroupedDueItem): Fixture => ({
   group: d.group,
   event: d.task ?? d.hackathon, // phones show only this column, so a task row names the task
   what: d.task ? `${DEADLINE_LABEL.task} · ${d.hackathon}` : DEADLINE_LABEL[d.kind],
-  href: d.task ? `/h/${d.hackathonId}/tasks` : `/h/${d.hackathonId}`,
+  href: d.task ? `/h/${d.hackathonId}/tasks` : d.kind === "check" ? `/h/${d.hackathonId}/links` : `/h/${d.hackathonId}`,
 });
 
 /** The next 7 days' deadlines. If the API is down the panel says so instead of failing the page. */

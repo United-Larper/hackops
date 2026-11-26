@@ -70,8 +70,9 @@ export class DiscoveryService {
 
         const same = known.find((k) => k.source === item.source && k.sourceId === item.sourceId);
         if (same) {
-          // Facts from the source are refreshed; stage, categories and the team's notes are never touched.
-          await this.db.hackathon.update({ where: { id: same.id }, data });
+          // Facts from the source are refreshed; stage, categories, prize tracks (imported or typed, with the team's
+          // "entering" marks) and the team's notes are never touched.
+          await this.db.hackathon.update({ where: { id: same.id }, data: fields });
           r.updated++;
           continue;
         }

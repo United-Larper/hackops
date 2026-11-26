@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, ServiceUnavailableException } from "@nestjs/common";
 import {
   BOARD_STAGES,
   BoardQuery,
@@ -7,6 +7,10 @@ import {
   HackathonPatch,
   HackathonQuery,
   NoteInput,
+  PrizeTrackSchema,
+  type PrizeTrack,
+  type SubmissionCheckDto,
+  type WinnersDto,
   StageInput,
   TaskInput,
   TaskPatch,
@@ -17,9 +21,11 @@ import {
 } from "@hackops/shared";
 import { ZodPipe } from "./common/zod.pipe";
 import type { Prisma } from "./generated/prisma/client";
-import { HACKATHON_INCLUDE, WORKSPACE_INCLUDE, fitTeam, toHackathonDto, toTaskDto, toWorkspaceDto } from "./mappers";
+import { HACKATHON_INCLUDE, WORKSPACE_INCLUDE, fitTeam, toHackathonDto, toTaskDto, toWorkspaceDto, tracksOf } from "./mappers";
 import { PrismaService } from "./prisma.service";
 import { changeStage, logActivity } from "./stage";
+import { cachedWinners, fetchDevpostTracks, pastWinners } from "./intel/past-winners";
+import { SubmissionCheckService } from "./intel/submission-check";
 
 const LABELS: Record<string, string> = {
   title: "title", url: "link", organizer: "organizer", mode: "format", city: "city", country: "country",
@@ -48,7 +54,10 @@ function writeData(body: HackathonPatch) {
 
 @Controller("hackathons")
 export class HackathonsController {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly checks: SubmissionCheckService,
+  ) {}
 
   @Get()
   async list(@Query(new ZodPipe(HackathonQuery)) q: HackathonQuery) {
@@ -108,6 +117,56 @@ export class HackathonsController {
       board[card.stage as keyof BoardDto]!.push(card);
     }
     return board;
+  }
+
+  /** Past-winner briefs already fetched, by organizer. Discover reads this; it never starts a fetch. */
+  @Get("winners")
+  winnersCached(): Record<string, WinnersDto["brief"]> {
+    return cachedWinners();
+  }
+
+  /** "What wins here": past Devpost editions by the same organizer. The first call per organizer fetches (up to a minute). */
+  @Get(":id/winners")
+  async winners(@Param("id") id: string): Promise<WinnersDto> {
+    const h = await this.db.hackathon.findUniqueOrThrow({ where: { id }, select: { source: true, organizer: true } });
+    if (h.source !== "devpost" || !h.organizer) return { organizer: h.organizer, brief: null };
+    try {
+      return { organizer: h.organizer, brief: await pastWinners(h.organizer) };
+    } catch (e) {
+      throw new ServiceUnavailableException(`Devpost didn't answer: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+
+  /** Adds the event's Devpost prize tracks. Tracks already there (same name) keep their text and "entering" mark. */
+  @Post(":id/tracks/import")
+  @HttpCode(200)
+  async importTracks(@Param("id") id: string) {
+    const h = await this.db.hackathon.findUniqueOrThrow({ where: { id }, select: { source: true, url: true, prizeTracks: true } });
+    if (h.source !== "devpost") throw new BadRequestException("Only Devpost events list prize tracks to import; add them by hand.");
+    let scraped: Awaited<ReturnType<typeof fetchDevpostTracks>>;
+    try {
+      scraped = await fetchDevpostTracks(h.url);
+    } catch (e) {
+      throw new ServiceUnavailableException(`Devpost didn't answer: ${e instanceof Error ? e.message : e}`);
+    }
+    const current = tracksOf(h.prizeTracks);
+    const known = new Set(current.map((t) => t.name.toLowerCase()));
+    // Scraped text is untrusted: each track goes through the same schema as a typed one.
+    const added = scraped
+      .map((t) => PrizeTrackSchema.safeParse(t))
+      .flatMap((r) => (r.success && !known.has(r.data.name.toLowerCase()) ? [r.data] : []));
+    const tracks: PrizeTrack[] = [...current, ...added].slice(0, 50);
+    await this.db.$transaction(async (tx) => {
+      await tx.hackathon.update({ where: { id }, data: { prizeTracks: JSON.stringify(tracks) } });
+      await logActivity(tx, id, added.length ? `Imported ${added.length} prize track${added.length === 1 ? "" : "s"} from Devpost` : "Checked Devpost: no new prize tracks");
+    });
+    return this.get(id);
+  }
+
+  /** The pre-submission check, run now. */
+  @Get(":id/check")
+  check(@Param("id") id: string): Promise<SubmissionCheckDto> {
+    return this.checks.run(id);
   }
 
   @Post()

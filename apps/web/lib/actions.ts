@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import type { HackathonResult, MemberInput, ProjectInput, Stage, TeamInput } from "@hackops/shared";
+import type { HackathonResult, MemberInput, PrizeTrack, ProjectInput, Stage, TeamInput } from "@hackops/shared";
 import { api, ApiError } from "@/lib/api";
 
 export type MoveResult = { error?: string };
@@ -151,4 +151,20 @@ export async function saveTeamProfile(fields: TeamInput): Promise<MoveResult> {
 /** Make a new bookmarklet secret; the old bookmarklet stops working. */
 export async function newFillToken(): Promise<MoveResult> {
   return write(() => api("/team/fill-token", { method: "POST" }), "The bookmarklet wasn't made.");
+}
+
+/** Replace the hackathon's prize tracks (typed, edited, entering marks). */
+export async function saveTracks(id: string, tracks: PrizeTrack[]) {
+  const prizeTracks = tracks.map(({ name, sponsor, prize, description, entering }) => ({ name, sponsor, prize, description, entering }));
+  return write(() => api(hack(id), { method: "PATCH", body: JSON.stringify({ prizeTracks }) }), "The prize tracks didn't save.");
+}
+
+/** Add the event's prize tracks from its Devpost page. */
+export async function importTracks(id: string) {
+  return write(() => api(`${hack(id)}/tracks/import`, { method: "POST" }), "Couldn't import from Devpost.");
+}
+
+/** Re-render the page, which runs the pre-submission check again. */
+export async function recheck() {
+  refresh();
 }
