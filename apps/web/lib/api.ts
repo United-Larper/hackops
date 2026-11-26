@@ -8,7 +8,8 @@ export const API_URL = process.env.API_URL ?? "http://localhost:4000";
 export { SESSION_COOKIE };
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  /** `code` names a case the form handles itself, such as "two_step" (the sign-in needs an authenticator code). */
+  constructor(public status: number, message: string, public code?: string) {
     super(message);
   }
 }
@@ -30,11 +31,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError(503, "The HackOps API isn't reachable. Start it with pnpm dev from the repo root.");
   }
-  // A wrong password on sign-in or password change is a message for the form, not a lost session.
-  if (res.status === 401 && path !== "/auth/login" && path !== "/auth/password") redirect("/login");
+  // On sign-in a 401 is a wrong password or code: a message for the form. Signed-in checks of your password answer 403.
+  if (res.status === 401 && path !== "/auth/login") redirect("/login");
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new ApiError(res.status, body?.message ?? `The API answered ${res.status}`);
+    const body = (await res.json().catch(() => null)) as { message?: string; code?: string } | null;
+    throw new ApiError(res.status, body?.message ?? `The API answered ${res.status}`, body?.code);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }

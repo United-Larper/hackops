@@ -86,6 +86,8 @@ model MemberSecret {
   memberId     String  @id
   passwordHash String? // scrypt$salt$hash; null until set-password or the seed sets one
   fillToken    String? @unique // this member's bookmarklet and calendar-feed secret
+  totpSecret   String? // two-step sign-in key (base32); null when it's off
+  totpLastStep Int? // the last code's 30-second step, so a code works once
   member       Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
 }
 

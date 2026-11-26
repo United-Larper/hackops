@@ -12,7 +12,7 @@ export const TESTER_PASSWORD = "correct horse battery";
 export async function signedIn(app: INestApplication, db: PrismaService) {
   const passwordHash = await hashPassword(TESTER_PASSWORD);
   await db.member.upsert({ where: { id: TESTER }, create: { id: TESTER, name: "Test Person", email: TESTER_EMAIL }, update: {} });
-  await db.memberSecret.upsert({ where: { memberId: TESTER }, create: { memberId: TESTER, passwordHash }, update: { passwordHash } });
+  await db.memberSecret.upsert({ where: { memberId: TESTER }, create: { memberId: TESTER, passwordHash }, update: { passwordHash, totpSecret: null, totpLastStep: null } });
   const token = newToken();
   await db.session.create({ data: { tokenHash: sha256(token), memberId: TESTER, expiresAt: new Date(Date.now() + 86_400_000) } });
   const auth = `Bearer ${token}`;

@@ -151,7 +151,10 @@ export type SignupProfileDto = {
 export type SessionDto = { token: string; expiresAt: string; member: MemberRefDto };
 
 /** GET /auth/me: who is signed in, plus their own bookmarklet and calendar secret (null until made). */
-export type MeDto = MemberRefDto & { fillToken: string | null };
+export type MeDto = MemberRefDto & { fillToken: string | null; twoStep: boolean };
+
+/** POST /auth/two-step/setup: a fresh key, not saved until a code from it turns two-step on. */
+export type TwoStepSetupDto = { secret: string; uri: string };
 
 /** GET /hackathons/:id/winners. `brief` is null for events without past Devpost data (not Devpost, no organizer, no past editions). */
 export type WinnersDto = { organizer: string | null; brief: WinnersBrief | null };

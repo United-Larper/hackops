@@ -169,10 +169,17 @@ export const TeamInput = z.object({
 export type TeamInput = z.infer<typeof TeamInput>;
 
 /** Sign-in. No length rule here, so a failed sign-in never hints at the password policy. */
-export const LoginInput = z.object({ email: z.string().trim().toLowerCase().max(200), password: z.string().min(1).max(200) });
+/** A 6-digit authenticator code; spaces are dropped, since apps show it as "123 456". */
+const code = z.string().max(20).transform((s) => s.replace(/\s/g, "")).pipe(z.string().regex(/^\d{6}$/,"Enter the 6-digit code"));
+
+export const LoginInput = z.object({ email: z.string().trim().toLowerCase().max(200), password: z.string().min(1).max(200), code: code.optional() });
 export type LoginInput = z.infer<typeof LoginInput>;
 
 /** A password HackOps will store: 10 to 200 characters (scrypt cost stays bounded). */
 export const password = z.string().min(10, "Use at least 10 characters").max(200);
 export const PasswordInput = z.object({ current: z.string().min(1).max(200), next: password });
 export type PasswordInput = z.infer<typeof PasswordInput>;
+
+/** Turn two-step sign-in on: the key from /auth/two-step/setup and a code it made. Off needs only `password` and `code`. */
+export const TwoStepInput = z.object({ password: z.string().min(1).max(200), code, secret: z.string().regex(/^[A-Z2-7]{32}$/).optional() });
+export type TwoStepInput = z.infer<typeof TwoStepInput>;

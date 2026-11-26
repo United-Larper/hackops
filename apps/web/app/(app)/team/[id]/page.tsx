@@ -10,6 +10,7 @@ import { ResultSquare } from "@/components/result";
 import { MYT } from "@/lib/time";
 import { MemberForm } from "../member-form";
 import { PasswordForm } from "./password-form";
+import { TwoStepForm } from "./two-step-form";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -36,7 +37,12 @@ export default async function MemberPage({ params }: Props) {
         <MemberForm key={m.id} member={m} />
         <div className="flex flex-col gap-5">
           <History m={m} />
-          {me.id === m.id && <PasswordForm />}
+          {me.id === m.id && (
+            <>
+              <PasswordForm />
+              <TwoStepForm key={String(me.twoStep)} on={me.twoStep} />
+            </>
+          )}
         </div>
       </div>
     </>

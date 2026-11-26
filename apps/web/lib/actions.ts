@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
-import type { HackathonResult, MemberInput, PrizeTrack, ProjectInput, SessionDto, Stage, TeamInput } from "@hackops/shared";
+import type { HackathonResult, MemberInput, PrizeTrack, ProjectInput, SessionDto, Stage, TeamInput, TwoStepSetupDto } from "@hackops/shared";
 import { cookies, headers } from "next/headers";
 import { api, ApiError, SESSION_COOKIE } from "@/lib/api";
 
@@ -177,20 +177,27 @@ export async function recheck() {
 const safeNext = (next: unknown) =>
   typeof next === "string" && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/board";
 
-/** Sign in: the API checks the password; the session token lives only in an httpOnly cookie. */
-export async function login(_: MoveResult & { email?: string }, fd: FormData): Promise<MoveResult & { email?: string }> {
+export type LoginState = MoveResult & { needCode?: boolean };
+
+/**
+ * Sign in: the API checks the password, then the authenticator code if the member turned two-step on.
+ * The session token lives only in an httpOnly cookie.
+ */
+export async function login(_: LoginState, fd: FormData): Promise<LoginState> {
   let session: SessionDto;
   try {
-    // The API limits failed sign-ins per browser address too; Next puts the address in x-forwarded-for.
-    const address = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "";
+    // The API also limits failed sign-ins per browser address. The last x-forwarded-for entry is the one the nearest
+    // proxy added (Next adds the socket address when there's none); earlier entries are whatever the browser sent.
+    const address = (await headers()).get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "";
+    const code = String(fd.get("code") ?? "").trim() || undefined;
     session = await api<SessionDto>("/auth/login", {
       method: "POST",
       headers: { "x-client-address": address },
-      body: JSON.stringify({ email: fd.get("email"), password: fd.get("password") }),
+      body: JSON.stringify({ email: fd.get("email"), password: fd.get("password"), code }),
     });
   } catch (e) {
-    // The email comes back so the form keeps it (React resets a form after its action); the password never does.
-    return { error: e instanceof ApiError ? e.message : "Couldn't sign in.", email: String(fd.get("email") ?? "") };
+    if (!(e instanceof ApiError)) return { error: "Couldn't sign in." };
+    return { error: e.message, needCode: e.code === "two_step" };
   }
   (await cookies()).set(SESSION_COOKIE, session.token, {
     httpOnly: true,
@@ -224,4 +231,23 @@ export async function changePassword(_: MoveResult & { done?: boolean }, fd: For
     return { error: e instanceof ApiError ? e.message : "The password didn't change." };
   }
   return { done: true };
+}
+
+/** A fresh authenticator key to show; nothing is saved until a code from it comes back. */
+export async function startTwoStep(): Promise<MoveResult & Partial<TwoStepSetupDto>> {
+  try {
+    return await api<TwoStepSetupDto>("/auth/two-step/setup", { method: "POST" });
+  } catch (e) {
+    unstable_rethrow(e);
+    return { error: e instanceof ApiError ? e.message : "Couldn't make a key." };
+  }
+}
+
+/** Turn two-step sign-in on (with `secret`) or off (without): both need your password and a current code. */
+export async function setTwoStep(_: MoveResult, fd: FormData): Promise<MoveResult> {
+  const secret = fd.get("secret") ? String(fd.get("secret")) : undefined;
+  return write(
+    () => api(secret ? "/auth/two-step" : "/auth/two-step/off", { method: "POST", body: JSON.stringify({ password: fd.get("password"), code: fd.get("code"), secret }) }),
+    "Two-step sign-in didn't change.",
+  );
 }

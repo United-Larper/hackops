@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { Injectable, type NestMiddleware } from "@nestjs/common";
 import type { NextFunction, Request, Response } from "express";
@@ -27,6 +27,39 @@ export async function verifyPassword(password: string, stored: string | null | u
   const want = Buffer.from(hash, "base64url");
   const got = await scryptAsync(password, Buffer.from(salt, "base64url"), want.length);
   return stored != null && timingSafeEqual(got, want);
+}
+
+// Two-step sign-in: TOTP (RFC 6238, SHA-1, 6 digits, 30 seconds), what every authenticator app speaks.
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+/** 20 random bytes in base32: the key an authenticator app takes. */
+export function newTotpSecret(): string {
+  let bits = 0, value = 0, out = "";
+  for (const byte of randomBytes(20)) {
+    value = ((value << 8) | byte) & 0xffff;
+    for (bits += 8; bits >= 5; bits -= 5) out += B32[(value >>> (bits - 5)) & 31];
+  }
+  return out; // 160 bits is a whole number of base32 characters
+}
+
+export function totp(secret: string, step: number): string {
+  let bits = 0, value = 0;
+  const key: number[] = [];
+  for (const c of secret) {
+    value = ((value << 5) | B32.indexOf(c)) & 0xffff;
+    if ((bits += 5) >= 8) key.push((value >>> (bits -= 8)) & 255);
+  }
+  const msg = Buffer.alloc(8);
+  msg.writeBigUInt64BE(BigInt(step));
+  const h = createHmac("sha1", Buffer.from(key)).update(msg).digest();
+  return String((h.readUInt32BE(h[19] & 15) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+}
+
+/** The 30-second step a code belongs to, allowing one step of clock drift either way, or null. */
+export function totpStep(secret: string, code: string, now = Date.now()): number | null {
+  const t = Math.floor(now / 30_000);
+  for (const step of [t - 1, t, t + 1]) if (timingSafeEqual(Buffer.from(totp(secret, step)), Buffer.from(code.padEnd(6).slice(0, 6)))) return step;
+  return null;
 }
 
 export const newToken = () => randomBytes(32).toString("base64url");
