@@ -110,9 +110,9 @@ Concretely:
 - [ ] 9.2 Bookmarklet (with tests)
 
 ### 10 Win intelligence
-- [ ] 10.1 "What wins here" (with tests)
-- [ ] 10.2 Prize-track finder (with tests)
-- [ ] 10.3 Pre-submission check (with tests)
+- [x] 10.1 "What wins here" (with tests)
+- [x] 10.2 Prize-track finder (with tests)
+- [x] 10.3 Pre-submission check (with tests)
 
 ### 11 Later (don't start yet)
 - [ ] 11.1 AI hook
