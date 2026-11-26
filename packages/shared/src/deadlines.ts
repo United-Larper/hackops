@@ -8,7 +8,7 @@ type TaskDue = { id: string; title: string; status: string; dueAt: When; hackath
 
 export type DueItem = {
   id: string; // stable: `${hackathonId}:${kind}` or `task:${taskId}`
-  kind: Deadline["kind"] | "task";
+  kind: Deadline["kind"] | "task" | "check"; // "check": a failing pre-submission check, listed at the submission deadline
   at: string; // ISO, UTC
   hackathonId: string;
   hackathon: string;
@@ -22,6 +22,7 @@ export const DEADLINE_LABEL: Record<DueItem["kind"], string> = {
   submission: "Submission due",
   judging: "Judging",
   task: "Task due",
+  check: "Pre-submission check failing",
 };
 
 const isIn = (list: readonly string[], v: string) => list.includes(v);
@@ -52,12 +53,19 @@ export function dueItems(hackathons: HackathonDates[], tasks: TaskDue[]): DueIte
 const mytDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur" }); // YYYY-MM-DD in MYT
 const DAY = 86_400_000;
 
-/** In-scope deadlines from now until `days` from now, grouped by MYT calendar day. */
-export function upcomingDeadlines(hackathons: HackathonDates[], tasks: TaskDue[], now: Date, days: number): GroupedDueItem[] {
+/**
+ * In-scope deadlines from now until `days` from now, grouped by MYT calendar day. A Registered or Building hackathon in
+ * `failingChecks` (its last pre-submission check failed) also gets a "check" item at its submission deadline.
+ */
+export function upcomingDeadlines(hackathons: HackathonDates[], tasks: TaskDue[], now: Date, days: number, failingChecks: string[] = []): GroupedDueItem[] {
   const from = now.getTime();
   const today = mytDay.format(from);
   const tomorrow = mytDay.format(from + DAY); // MYT has no daylight saving
-  return dueItems(hackathons, tasks)
+  const checks: DueItem[] = hackathons
+    .filter((h) => failingChecks.includes(h.id) && h.submissionDueAt && isIn(ACTIVE_STAGES, h.stage))
+    .map((h) => ({ id: `${h.id}:check`, kind: "check", at: new Date(h.submissionDueAt!).toISOString(), hackathonId: h.id, hackathon: h.title, task: null }));
+  return [...dueItems(hackathons, tasks), ...checks]
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
     .filter((i) => Date.parse(i.at) >= from && Date.parse(i.at) < from + days * DAY)
     .map((i) => {
       const d = mytDay.format(Date.parse(i.at));

@@ -1,7 +1,8 @@
 import type { ProjectDetailDto, ProjectDto } from "@hackops/shared";
-import { EmptyState } from "@/components/shell/page-header";
+import { Suspense } from "react";
 import { api } from "@/lib/api";
 import { getWorkspace } from "@/lib/workspace";
+import { CheckLoading, SubmissionCheck } from "./check";
 import { LinksForm, PickProject } from "./links";
 
 export default async function LinksTab({ params }: { params: Promise<{ id: string }> }) {
@@ -31,10 +32,9 @@ export default async function LinksTab({ params }: { params: Promise<{ id: strin
       ) : (
         <PickProject hackathonId={h.id} projects={projects} suggested={`${h.title} entry`} />
       )}
-      <EmptyState title="Pre-submission check">
-        Before you submit, this will check that the repository, demo and video links work and that the submission covers the judging
-        criteria. It arrives with win intelligence in phase 10.
-      </EmptyState>
+      <Suspense fallback={<CheckLoading />}>
+        <SubmissionCheck id={h.id} />
+      </Suspense>
     </div>
   );
 }

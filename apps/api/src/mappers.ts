@@ -1,6 +1,8 @@
 import {
   fitScore,
   phaseOf,
+  trackFit,
+  type PrizeTrack,
   type FitTeam,
   regionOf,
   type ActivityDto,
@@ -25,6 +27,8 @@ const list = <T = string>(s: string): T[] => {
     return [];
   }
 };
+/** Stored prize tracks; rows from before phase 10 have no "entering" mark. */
+export const tracksOf = (s: string): PrizeTrack[] => list<PrizeTrack>(s).map((t) => ({ ...t, entering: t.entering ?? false }));
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const ref = (m: { id: string; name: string } | null) => (m ? { id: m.id, name: m.name } : null);
 
@@ -42,7 +46,7 @@ export function toHackathonDto(h: HackathonRow, team: FitTeam | null = null, now
     phase: phaseOf(h.stage as Stage),
     result: h.result as HackathonDto["result"],
     region: regionOf(h),
-    prizeTracks: list(h.prizeTracks),
+    prizeTracks: tracksOf(h.prizeTracks),
     startsAt: iso(h.startsAt),
     endsAt: iso(h.endsAt),
     registrationClosesAt: iso(h.registrationClosesAt),
@@ -77,8 +81,12 @@ export function toProjectDto(p: Prisma.ProjectGetPayload<object>): ProjectDto {
 }
 
 export function toWorkspaceDto(h: WorkspaceRow, team: FitTeam | null = null): WorkspaceDto {
+  const base = toHackathonDto(h, team);
+  const tech = h.project ? list(h.project.tech) : [];
+  const categoryWords = h.categories.flatMap((c) => [c.name, ...list(c.keywords)]);
   return {
-    ...toHackathonDto(h, team),
+    ...base,
+    prizeTracks: base.prizeTracks.map((t) => ({ ...t, fit: trackFit(t, tech, categoryWords) })),
     assignments: h.assignments.map((a) => ({ member: { id: a.member.id, name: a.member.name }, role: a.role as never, accountable: a.accountable })),
     tasks: h.tasks.map(toTaskDto),
     project: h.project ? toProjectDto(h.project) : null,

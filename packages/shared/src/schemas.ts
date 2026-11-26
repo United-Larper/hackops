@@ -28,6 +28,10 @@ export const PrizeTrackSchema = z.object({
   name: text(200),
   sponsor: optionalText(200),
   prize: optionalText(200),
+  /** What the judges look for; the prize-track finder matches against it. */
+  description: optionalText(2000),
+  /** The team plans to enter this track. */
+  entering: z.boolean().default(false),
 });
 export type PrizeTrack = z.infer<typeof PrizeTrackSchema>;
 

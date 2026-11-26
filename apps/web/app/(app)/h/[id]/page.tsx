@@ -1,11 +1,13 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { phaseOf } from "@hackops/shared";
 import { Icon } from "@/components/icon";
 import { RESULT_META, STAGE_NAME } from "@/lib/stage";
 import { money } from "@/lib/format";
 import { clockTime, shortDate } from "@/lib/time";
 import { getWorkspace } from "@/lib/workspace";
+import { PrizeTracks } from "./tracks";
+import { Winners, WinnersLoading } from "./winners";
 
 const MODE: Record<string, string> = { online: "Online", in_person: "In person", hybrid: "Hybrid" };
 const PHASE: Record<string, string> = { initiation: "Initiation", planning: "Planning", execution: "Execution and monitoring", closing: "Closing" };
@@ -57,30 +59,38 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)] lg:items-start">
-      <dl className="divide-y divide-line rounded-[10px] border border-line bg-panel">
-        {rows.map(([label, value]) => (
-          <div key={label} className="grid gap-1 px-4 py-3 sm:grid-cols-[170px_minmax(0,1fr)] sm:gap-4 sm:px-5">
-            <dt className="text-[13px] text-muted">{label}</dt>
-            <dd className="text-[15px]">{value}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="flex min-w-0 flex-col gap-5">
+        <dl className="divide-y divide-line rounded-[10px] border border-line bg-panel">
+          {rows.map(([label, value]) => (
+            <div key={label} className="grid gap-1 px-4 py-3 sm:grid-cols-[170px_minmax(0,1fr)] sm:gap-4 sm:px-5">
+              <dt className="text-[13px] text-muted">{label}</dt>
+              <dd className="text-[15px]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <PrizeTracks hackathonId={h.id} tracks={h.prizeTracks} hasProject={Boolean(h.project)} canImport={h.source === "devpost"} />
+      </div>
 
-      <section aria-labelledby="decision-h" className="rounded-[10px] border border-line bg-panel px-5 py-4">
-        <h2 id="decision-h" className="font-display text-xl font-bold">Decision note</h2>
-        {h.decisionNote ? (
-          <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line">{h.decisionNote}</p>
-        ) : (
-          <p className="mt-2 text-[15px] leading-relaxed text-muted">
-            Why the team is entering. It&apos;s written when someone decides from the board, or added from the stage control.
-          </p>
-        )}
-        {h.fit && h.fit.reasons.length > 0 && (
-          <p className="mt-4 border-t border-line pt-3 text-[13px] text-muted">
-            Fit <span className="font-display text-base font-bold text-text">{h.fit.score}</span> · {h.fit.reasons.join(" · ")}
-          </p>
-        )}
-      </section>
+      <div className="flex flex-col gap-5">
+        <section aria-labelledby="decision-h" className="rounded-[10px] border border-line bg-panel px-5 py-4">
+          <h2 id="decision-h" className="font-display text-xl font-bold">Decision note</h2>
+          {h.decisionNote ? (
+            <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line">{h.decisionNote}</p>
+          ) : (
+            <p className="mt-2 text-[15px] leading-relaxed text-muted">
+              Why the team is entering. It&apos;s written when someone decides from the board, or added from the stage control.
+            </p>
+          )}
+          {h.fit && h.fit.reasons.length > 0 && (
+            <p className="mt-4 border-t border-line pt-3 text-[13px] text-muted">
+              Fit <span className="font-display text-base font-bold text-text">{h.fit.score}</span> · {h.fit.reasons.join(" · ")}
+            </p>
+          )}
+        </section>
+        <Suspense fallback={<WinnersLoading />}>
+          <Winners id={h.id} />
+        </Suspense>
+      </div>
     </div>
   );
 }

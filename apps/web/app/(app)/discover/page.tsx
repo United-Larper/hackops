@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { CategoryDto, HackathonDto } from "@hackops/shared";
+import { briefLine, type CategoryDto, type HackathonDto, type WinnersBrief } from "@hackops/shared";
 import { Icon } from "@/components/icon";
 import { EmptyState, PageHeader } from "@/components/shell/page-header";
 import { api, ApiError } from "@/lib/api";
@@ -37,9 +37,14 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
 
   let rows: HackathonDto[] = [];
   let categories: CategoryDto[] = [];
+  let briefs: Record<string, WinnersBrief | null> = {};
   let error: string | null = null;
   try {
-    [rows, categories] = await Promise.all([api<HackathonDto[]>(`/hackathons?${query}`), api<CategoryDto[]>("/categories")]);
+    [rows, categories, briefs] = await Promise.all([
+      api<HackathonDto[]>(`/hackathons?${query}`),
+      api<CategoryDto[]>("/categories"),
+      api<Record<string, WinnersBrief | null>>("/hackathons/winners"),
+    ]);
   } catch (e) {
     error = e instanceof ApiError ? e.message : "Couldn't load hackathons.";
   }
@@ -117,7 +122,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
           </h2>
           <ol className="divide-y divide-line overflow-hidden rounded-[10px] border border-line bg-panel">
             {shown.map((h) => (
-              <Row key={h.id} h={h} now={now} />
+              <Row key={h.id} h={h} now={now} briefs={briefs} />
             ))}
           </ol>
           {!s.all && rows.length > PAGE && (
@@ -131,7 +136,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function Row({ h, now }: { h: HackathonDto; now: Date }) {
+function Row({ h, now, briefs }: { h: HackathonDto; now: Date; briefs: Record<string, WinnersBrief | null> }) {
   const next = h.registrationClosesAt ?? h.submissionDueAt;
   const nextLabel = h.registrationClosesAt ? "Registration closes" : "Submission due";
   const urgent = next ? isUrgent(next, now) : false;
@@ -159,6 +164,7 @@ function Row({ h, now }: { h: HackathonDto; now: Date }) {
           {[h.organizer, place, SOURCE[h.source] ?? h.source].filter(Boolean).join(" · ")}
         </p>
         {h.fit && h.fit.reasons.length > 0 && <p className="mt-1 text-[13px]">{h.fit.reasons.join(" · ")}</p>}
+        <WinsLine h={h} briefs={briefs} />
         {h.categories.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Categories">
             {h.categories.map((c) => (
@@ -204,4 +210,30 @@ function Row({ h, now }: { h: HackathonDto; now: Date }) {
       </div>
     </li>
   );
+}
+
+/**
+ * "What wins here" in one line. Discover only shows briefs already fetched (a brief costs about 20 Devpost requests),
+ * so an unfetched Devpost event links to its workspace overview, which fetches it.
+ */
+function WinsLine({ h, briefs }: { h: HackathonDto; briefs: Record<string, WinnersBrief | null> }) {
+  const known = h.source === "devpost" && h.organizer ? briefs[h.organizer] : null;
+  const line = known ? briefLine(known) : null;
+  if (line) {
+    return (
+      <p className="mt-1 flex items-start gap-1.5 text-[13px]">
+        <Icon name="trophy" size={14} className="mt-0.5 shrink-0 text-muted" />
+        <span>{line}</span>
+      </p>
+    );
+  }
+  if (h.source === "devpost" && h.organizer && !(h.organizer in briefs)) {
+    return (
+      <Link href={`/h/${h.id}`} className="mt-1 inline-flex min-h-6 items-center gap-1.5 text-[13px] text-muted underline hover:text-text">
+        <Icon name="trophy" size={14} />
+        See what wins here
+      </Link>
+    );
+  }
+  return <p className="mt-1 text-[13px] text-muted">No past data</p>;
 }
