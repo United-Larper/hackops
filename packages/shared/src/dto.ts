@@ -135,7 +135,14 @@ export type PortfolioDto = {
   categories: CategoryDto[];
 };
 
-export type TeamDto = { name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string };
+/** GET /team. `fillToken` is the sign-up bookmarklet's secret: null until one is made with POST /team/fill-token. */
+export type TeamDto = { name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string; fillToken: string | null };
+
+/** GET /signup-profile: what the bookmarklet may fill, and nothing else. Open to any origin, so it needs the token. */
+export type SignupProfileDto = {
+  team: { name: string; pitch: string | null };
+  members: { id: string; name: string; email: string | null; githubUrl: string | null; linkedinUrl: string | null; organisation: string | null; tshirtSize: string | null; dietary: string | null }[];
+};
 
 /** GET /hackathons/:id/winners. `brief` is null for events without past Devpost data (not Devpost, no organizer, no past editions). */
 export type WinnersDto = { organizer: string | null; brief: WinnersBrief | null };

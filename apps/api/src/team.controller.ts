@@ -1,7 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from "@nestjs/common";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Put, Query, Res } from "@nestjs/common";
+import type { Response } from "express";
 import {
   ACTIVE_STAGES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, workload,
-  type HackathonResult, type MemberDetailDto, type ProjectDetailDto, type ProjectSummaryDto, type Role, type Stage, type TeamWorkloadDto,
+  type HackathonResult, type MemberDetailDto, type ProjectDetailDto, type SignupProfileDto, type ProjectSummaryDto, type Role, type Stage, type TeamWorkloadDto,
 } from "@hackops/shared";
 import { z } from "zod";
 import { ZodPipe } from "./common/zod.pipe";
@@ -135,6 +137,31 @@ export class TeamController {
   async put(@Body(new ZodPipe(TeamInput)) body: TeamInput) {
     const data = jsonFields(body, ["preferredTech", "preferredCats"]);
     return toTeamDto(await this.db.team.upsert({ where: { id: "team" }, create: data, update: data }));
+  }
+
+  /** Makes a new bookmarklet secret; a bookmarklet made with the old one stops working. Needs the team row (PUT /team). */
+  @Post("team/fill-token")
+  async rotateFillToken() {
+    return toTeamDto(await this.db.team.update({ where: { id: "team" }, data: { fillToken: randomBytes(24).toString("base64url") } }));
+  }
+
+  /**
+   * The bookmarklet reads this from third-party registration pages, so it is the one route open to any origin.
+   * Member ids are public (the portfolio), hence the token; and it returns sign-up fields only.
+   */
+  @Get("signup-profile")
+  async signupProfile(@Query("token") token: unknown, @Res({ passthrough: true }) res: Response): Promise<SignupProfileDto> {
+    res.setHeader("Access-Control-Allow-Origin", "*"); // set before any throw, so fill.js can read the 404 too
+    const team = await this.db.team.findUnique({ where: { id: "team" } });
+    const same = (a: Buffer, b: Buffer) => a.length === b.length && timingSafeEqual(a, b);
+    if (typeof token !== "string" || !team?.fillToken || !same(Buffer.from(team.fillToken), Buffer.from(token))) {
+      throw new NotFoundException("This bookmarklet is out of date. Drag the new one from HackOps Settings.");
+    }
+    const members = await this.db.member.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, email: true, githubUrl: true, linkedinUrl: true, organisation: true, tshirtSize: true, dietary: true },
+    });
+    return { team: { name: team.name, pitch: team.pitch }, members };
   }
 
   @Get("categories")
