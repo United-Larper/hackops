@@ -5,15 +5,17 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "./app.module";
 import { PrismaService } from "./prisma.service";
+import { signedIn, TESTER } from "../test/auth";
 
 let app: INestApplication;
 let db: PrismaService;
-const http = () => request(app.getHttpServer());
+let http: Awaited<ReturnType<typeof signedIn>>["http"];
 
 beforeAll(async () => {
   const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
   app = await mod.createNestApplication().init();
   db = app.get(PrismaService);
+  http = (await signedIn(app, db)).http;
 });
 afterAll(() => app.close());
 
@@ -22,7 +24,7 @@ beforeEach(async () => {
   await db.task.deleteMany();
   await db.assignment.deleteMany();
   await db.hackathon.deleteMany();
-  await db.member.deleteMany();
+  await db.member.deleteMany({ where: { id: { not: TESTER } } });
   await db.project.deleteMany();
   await db.category.deleteMany();
   await db.category.create({ data: { slug: "ai-ml", name: "AI / ML" } });
@@ -260,9 +262,13 @@ describe("portfolio", () => {
     await http().put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }]).expect(200);
     await http().post(`/hackathons/${h.id}/stage`).send({ stage: "results", result: "finalist", note: "secret note" }).expect(200);
     await http().patch(`/hackathons/${h.id}`).send({ resultNote: "secret judges feedback" }).expect(200);
+    const p = (await http().post("/projects").send({ name: "Banjir Watch", tech: ["Flutter"] }).expect(201)).body;
+    await http().patch(`/hackathons/${h.id}`).send({ projectId: p.id }).expect(200);
 
-    const res = await http().get("/portfolio").expect(200);
+    const res = await request(app.getHttpServer()).get("/portfolio").expect(200); // public: no session
     expect(res.body.entries).toHaveLength(1);
+    // Picked by hand: a column added to Project later stays private until someone adds it here on purpose.
+    expect(Object.keys(res.body.entries[0].project).sort()).toEqual(["demoUrl", "description", "devpostUrl", "name", "repoUrl", "slidesUrl", "tech", "videoUrl"]);
     for (const secret of ["aina@example.com", "Halal", "UM", "tshirtSize", "email", "dietary", "organisation", "secret"]) {
       expect(res.text).not.toContain(secret);
     }

@@ -254,7 +254,7 @@ export class HackathonsController {
   async addNote(@Param("id") id: string, @Body(new ZodPipe(NoteInput)) body: NoteInput) {
     await this.db.$transaction(async (tx) => {
       await tx.hackathon.findUniqueOrThrow({ where: { id } });
-      await logActivity(tx, id, body.text, "note", body.memberId);
+      await logActivity(tx, id, body.text, "note");
     });
     return this.get(id);
   }

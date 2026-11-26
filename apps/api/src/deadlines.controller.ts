@@ -1,5 +1,6 @@
-import { Controller, Get, Header, Query } from "@nestjs/common";
+import { Controller, Get, Header, NotFoundException, Query } from "@nestjs/common";
 import { ACTIVE_STAGES, BOARD_STAGES, DeadlinesQuery, dueItems, toIcs, upcomingDeadlines, type GroupedDueItem } from "@hackops/shared";
+import { fillTokenOwner } from "./auth";
 import { ZodPipe } from "./common/zod.pipe";
 import { SubmissionCheckService } from "./intel/submission-check";
 import { PrismaService } from "./prisma.service";
@@ -19,9 +20,11 @@ export class DeadlinesController {
   }
 
   /** The calendar feed: the same deadlines at any date, for Google Calendar, Outlook or Apple Calendar to import or subscribe to. */
+  // Public (calendar apps can't sign in), so it needs a member's own fill token: `/calendar.ics?token=…` from Settings.
   @Get("calendar.ics")
   @Header("Content-Type", "text/calendar; charset=utf-8")
-  async calendar(): Promise<string> {
+  async calendar(@Query("token") token: unknown): Promise<string> {
+    if (!(await fillTokenOwner(this.db, token))) throw new NotFoundException("This calendar link is out of date. Copy the new one from HackOps Settings.");
     const [hackathons, tasks] = await this.load();
     return toIcs(dueItems(hackathons, tasks), new Date());
   }

@@ -19,7 +19,7 @@ import type { PrismaService } from "./prisma.service";
 
 // Database rows → API DTOs. Lists stored as JSON strings are parsed here, dates become ISO strings.
 
-const list = <T = string>(s: string): T[] => {
+export const list = <T = string>(s: string): T[] => {
   try {
     const v = JSON.parse(s);
     return Array.isArray(v) ? v : [];
@@ -99,7 +99,7 @@ export function toMemberDto(m: Prisma.MemberGetPayload<object>): MemberDto {
 }
 
 export function toTeamDto(t: Prisma.TeamGetPayload<object>): TeamDto {
-  return { name: t.name, pitch: t.pitch, preferredTech: list(t.preferredTech), preferredCats: list(t.preferredCats), homeCity: t.homeCity, fillToken: t.fillToken };
+  return { name: t.name, pitch: t.pitch, preferredTech: list(t.preferredTech), preferredCats: list(t.preferredCats), homeCity: t.homeCity };
 }
 
 /** The team profile as the fit score needs it, or null before a team profile exists. */

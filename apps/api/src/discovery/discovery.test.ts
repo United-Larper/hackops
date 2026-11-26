@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { Test } from "@nestjs/testing";
 import type { INestApplication } from "@nestjs/common";
 import type { ScrapedHackathon } from "@hackops/shared";
-import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma.service";
+import { signedIn, TESTER } from "../../test/auth";
 import { parseDevpost, parsePeriod, parsePrize } from "./devpost";
 import { currentSeason, parseMlh } from "./mlh";
 import { DiscoveryService } from "./refresh";
@@ -70,11 +70,13 @@ describe("refresh", () => {
     teamSizeMax: null, eligibility: null, prizeTracks: [], themes: ["Machine Learning/AI"], ...over,
   });
 
+  let http: Awaited<ReturnType<typeof signedIn>>["http"];
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = await mod.createNestApplication().init();
     db = app.get(PrismaService);
     discovery = app.get(DiscoveryService);
+    http = (await signedIn(app, db)).http;
   });
   afterAll(() => app.close());
 
@@ -84,7 +86,7 @@ describe("refresh", () => {
     await db.assignment.deleteMany();
     await db.hackathon.deleteMany();
     await db.category.deleteMany();
-    await db.member.deleteMany();
+    await db.member.deleteMany({ where: { id: { not: TESTER } } });
     await db.team.deleteMany();
     await db.category.createMany({
       data: [
@@ -140,10 +142,10 @@ describe("refresh", () => {
         item({ sourceId: "c", title: "Old Hack", submissionDueAt: new Date(Date.now() - 86_400_000) }),
       ],
     });
-    const res = await request(app.getHttpServer()).get("/hackathons?stage=discovered&open=1&sort=fit").expect(200);
+    const res = await http().get("/hackathons?stage=discovered&open=1&sort=fit").expect(200);
     expect(res.body.map((h: { title: string }) => h.title)).toEqual(["AI Online", "Generic Hack"]);
     expect(res.body[0].fit.reasons).toContain("Matches AI / ML");
-    const soon = await request(app.getHttpServer()).get("/hackathons?closesWithin=7").expect(200);
+    const soon = await http().get("/hackathons?closesWithin=7").expect(200);
     expect(soon.body.map((h: { title: string }) => h.title)).toEqual(["Generic Hack"]);
   });
 });

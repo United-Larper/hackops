@@ -1,13 +1,14 @@
 import { BadRequestException } from "@nestjs/common";
 import { templateTasks, type StageInput } from "@hackops/shared";
+import { currentSession } from "./auth";
 import type { PrismaService } from "./prisma.service";
 import type { Prisma } from "./generated/prisma/client";
 
 type Tx = Prisma.TransactionClient;
 
-/** Every change to a hackathon leaves a line in its activity feed, written in the same transaction. */
-export function logActivity(tx: Tx, hackathonId: string, text: string, kind: "change" | "note" = "change", memberId?: string | null) {
-  return tx.activity.create({ data: { hackathonId, text, kind, memberId: memberId ?? null } });
+/** Every change to a hackathon leaves a line in its activity feed, written in the same transaction, under whoever is signed in. */
+export function logActivity(tx: Tx, hackathonId: string, text: string, kind: "change" | "note" = "change") {
+  return tx.activity.create({ data: { hackathonId, text, kind, memberId: currentSession()?.memberId ?? null } });
 }
 
 /**

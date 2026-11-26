@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { Test } from "@nestjs/testing";
 import type { INestApplication } from "@nestjs/common";
 import { TASK_TEMPLATE } from "@hackops/shared";
-import request from "supertest";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma.service";
+import { signedIn, TESTER } from "../../test/auth";
 import { isDevpost, parseGallery, parsePrizes, parseProject } from "./past-winners";
 import { checkSubmission } from "./submission-check";
 
@@ -103,12 +103,13 @@ describe("pre-submission check", () => {
 describe("intel endpoints", () => {
   let app: INestApplication;
   let db: PrismaService;
-  const http = () => request(app.getHttpServer());
+  let http: Awaited<ReturnType<typeof signedIn>>["http"];
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = await mod.createNestApplication().init();
     db = app.get(PrismaService);
+    http = (await signedIn(app, db)).http;
   });
   afterAll(() => app.close());
   beforeEach(async () => {

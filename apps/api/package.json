@@ -11,7 +11,8 @@
     "db:migrate": "prisma migrate dev",
     "postinstall": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts"
+    "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
+    "set-password": "tsx prisma/set-password.ts"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",

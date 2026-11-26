@@ -4,6 +4,7 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { templateTasks } from "@hackops/shared";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { hashPassword } from "../src/auth";
 
 const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }) });
 const now = Date.now();
@@ -26,10 +27,10 @@ const CATEGORIES = [
 ] as const;
 
 const MEMBERS = [
-  { id: "m-aina", name: "Aina Rahman", skills: ["React", "TypeScript", "UI design"], preferredRoles: ["lead", "designer"], organisation: "Universiti Malaya", tshirtSize: "S" },
-  { id: "m-weijie", name: "Tan Wei Jie", skills: ["Python", "FastAPI", "PostgreSQL"], preferredRoles: ["developer"], organisation: "Grab (intern)", tshirtSize: "L" },
-  { id: "m-harish", name: "Harish Kumar", skills: ["Flutter", "Firebase", "ML Kit"], preferredRoles: ["developer", "pitch"], organisation: "Universiti Teknologi Malaysia", tshirtSize: "M" },
-  { id: "m-sofia", name: "Sofia Lim", skills: ["Product", "Figma", "Public speaking"], preferredRoles: ["pitch", "designer"], organisation: "Freelance", tshirtSize: "M", dietary: "Vegetarian" },
+  { id: "m-aina", name: "Aina Rahman", email: "aina@example.com", skills: ["React", "TypeScript", "UI design"], preferredRoles: ["lead", "designer"], organisation: "Universiti Malaya", tshirtSize: "S" },
+  { id: "m-weijie", name: "Tan Wei Jie", email: "weijie@example.com", skills: ["Python", "FastAPI", "PostgreSQL"], preferredRoles: ["developer"], organisation: "Grab (intern)", tshirtSize: "L" },
+  { id: "m-harish", name: "Harish Kumar", email: "harish@example.com", skills: ["Flutter", "Firebase", "ML Kit"], preferredRoles: ["developer", "pitch"], organisation: "Universiti Teknologi Malaysia", tshirtSize: "M" },
+  { id: "m-sofia", name: "Sofia Lim", email: "sofia@example.com", skills: ["Product", "Figma", "Public speaking"], preferredRoles: ["pitch", "designer"], organisation: "Freelance", tshirtSize: "M", dietary: "Vegetarian" },
 ] as const;
 
 const PROJECTS = [
@@ -88,6 +89,13 @@ async function main() {
     const data = { ...m, skills: json(m.skills), preferredRoles: json(m.preferredRoles) };
     await db.member.upsert({ where: { id: m.id }, create: data, update: data });
   }
+  // Demo logins only when asked for: SEED_PASSWORD=… pnpm --filter api db:seed. Otherwise use set-password.
+  const seedPassword = process.env.SEED_PASSWORD;
+  if (seedPassword && seedPassword.length < 10) throw new Error("SEED_PASSWORD needs at least 10 characters");
+  if (seedPassword) {
+    const passwordHash = await hashPassword(seedPassword);
+    for (const m of MEMBERS) await db.memberSecret.upsert({ where: { memberId: m.id }, create: { memberId: m.id, passwordHash }, update: { passwordHash } });
+  }
   for (const p of PROJECTS) {
     const data = { ...p, tech: json(p.tech) };
     await db.project.upsert({ where: { id: p.id }, create: data, update: data });
@@ -135,6 +143,9 @@ async function main() {
 
   const counts = { hackathons: await db.hackathon.count(), members: await db.member.count(), projects: await db.project.count(), tasks: await db.task.count() };
   console.log("Seeded", counts);
+  console.log(seedPassword
+    ? `Demo members sign in as ${MEMBERS.map((m) => m.email).join(", ")} with SEED_PASSWORD.`
+    : "No passwords set. Run: pnpm --filter api set-password aina@example.com");
 }
 
 main()

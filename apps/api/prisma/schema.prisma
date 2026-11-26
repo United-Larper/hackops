@@ -65,7 +65,7 @@ model Category {
 model Member {
   id             String       @id @default(cuid())
   name           String
-  email          String?
+  email          String?      @unique // login; lowercased by MemberInput
   githubUrl      String?
   linkedinUrl    String?
   skills         String       @default("[]") // JSON: string[]
@@ -77,6 +77,26 @@ model Member {
   assignments    Assignment[]
   tasks          Task[]
   activity       Activity[]
+  secret         MemberSecret?
+  sessions       Session[]
+}
+
+// Secrets live apart from Member, so spreading a Member row into a response can never leak them.
+model MemberSecret {
+  memberId     String  @id
+  passwordHash String? // scrypt$salt$hash; null until set-password or the seed sets one
+  fillToken    String? @unique // this member's bookmarklet and calendar-feed secret
+  member       Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  tokenHash String   @id // sha256 of the token; the token itself is only in the person's cookie
+  memberId  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
 }
 
 model Assignment {
@@ -137,5 +157,4 @@ model Team {
   preferredTech String  @default("[]") // JSON: string[]
   preferredCats String  @default("[]") // JSON: category slugs
   homeCity      String  @default("Kuala Lumpur")
-  fillToken     String? // secret in the sign-up bookmarklet; GET /signup-profile needs it
 }
