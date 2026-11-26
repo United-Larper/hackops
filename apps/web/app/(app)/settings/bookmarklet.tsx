@@ -51,7 +51,7 @@ export function Bookmarklet({ origin, token }: { origin: string; token: string |
   if (!code) {
     return (
       <div className="flex flex-col gap-3 rounded-[10px] border border-line bg-panel px-5 py-5">
-        <p className="max-w-[62ch] text-[15px] leading-relaxed text-muted">The bookmarklet carries a secret only this team's HackOps knows, so other websites can't read the profile. Make it once; make a new one if the bookmark ever leaks.</p>
+        <p className="max-w-[62ch] text-[15px] leading-relaxed text-muted">Your bookmarklet carries a secret of your own, so it only ever fills your details and the team's. Make it once; make a new one if the bookmark ever leaks.</p>
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={make} disabled={pending} className="min-h-10 rounded-md bg-rail px-4 text-sm font-semibold text-gold transition-colors hover:bg-rail-2 disabled:opacity-50">
             {pending ? "Making" : "Make the bookmarklet"}
@@ -83,7 +83,7 @@ export function Bookmarklet({ origin, token }: { origin: string; token: string |
 
       <ol className="flex max-w-[62ch] list-decimal flex-col gap-1.5 pl-5 text-[15px] leading-relaxed marker:font-display marker:font-bold">
         <li>Drag <span className="font-semibold">HackOps fill</span> to the bookmarks bar, or copy it and paste it as a new bookmark's URL.</li>
-        <li>On a registration page, click the bookmark and pick who is filling the form.</li>
+        <li>On a registration page, click the bookmark and pick yourself, or team only.</li>
         <li>Check every outlined field, submit on the site yourself, then mark the hackathon Registered here.</li>
       </ol>
 

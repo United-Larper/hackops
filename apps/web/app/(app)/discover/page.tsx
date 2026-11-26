@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { briefLine, type CategoryDto, type HackathonDto, type WinnersBrief } from "@hackops/shared";
@@ -46,6 +47,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
       api<Record<string, WinnersBrief | null>>("/hackathons/winners"),
     ]);
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     error = e instanceof ApiError ? e.message : "Couldn't load hackathons.";
   }
   const shown = s.all ? rows : rows.slice(0, PAGE);

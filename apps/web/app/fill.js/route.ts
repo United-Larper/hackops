@@ -64,7 +64,7 @@ function fill(match: (hints: string) => ProfileKey | null, apiUrl: string) {
     })
     .then((profile) => {
       status.textContent = "Who is filling this form?";
-      for (const m of [...profile.members, null]) {
+      for (const m of [profile.member, null]) {
         const b = el("button", m ? m.name : `Team only (${profile.team.name})`, who);
         b.type = "button";
         b.onclick = () => run(profile, m);
@@ -77,7 +77,7 @@ function fill(match: (hints: string) => ProfileKey | null, apiUrl: string) {
         : (e as Error).message;
     });
 
-  function run(profile: SignupProfileDto, m: SignupProfileDto["members"][number] | null) {
+  function run(profile: SignupProfileDto, m: SignupProfileDto["member"] | null) {
     const [first, ...rest] = (m?.name ?? "").trim().split(/\s+/);
     const values: Partial<Record<ProfileKey, string | null>> = { teamName: profile.team.name, pitch: profile.team.pitch };
     if (m) {
