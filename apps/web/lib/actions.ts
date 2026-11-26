@@ -178,12 +178,13 @@ const safeNext = (next: unknown) =>
   typeof next === "string" && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/board";
 
 /** Sign in: the API checks the password; the session token lives only in an httpOnly cookie. */
-export async function login(_: MoveResult, fd: FormData): Promise<MoveResult> {
+export async function login(_: MoveResult & { email?: string }, fd: FormData): Promise<MoveResult & { email?: string }> {
   let session: SessionDto;
   try {
     session = await api<SessionDto>("/auth/login", { method: "POST", body: JSON.stringify({ email: fd.get("email"), password: fd.get("password") }) });
   } catch (e) {
-    return { error: e instanceof ApiError ? e.message : "Couldn't sign in." };
+    // The email comes back so the form keeps it (React resets a form after its action); the password never does.
+    return { error: e instanceof ApiError ? e.message : "Couldn't sign in.", email: String(fd.get("email") ?? "") };
   }
   (await cookies()).set(SESSION_COOKIE, session.token, {
     httpOnly: true,

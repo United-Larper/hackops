@@ -13,7 +13,7 @@ export function LoginForm({ next }: { next: string }) {
       <input type="hidden" name="next" value={next} />
       <label className="flex flex-col gap-1 text-sm font-medium">
         Email
-        <input name="email" type="email" required autoComplete="username" autoFocus maxLength={200} className={field} />
+        <input name="email" type="email" required autoComplete="username" autoFocus maxLength={200} defaultValue={state.email} className={field} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Password
