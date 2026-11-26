@@ -33,7 +33,7 @@
 - [x] The bookmarklet is a one-line loader that injects `fill.js` from the local web app, so it can be changed without re-installing.
 - [x] `matchField(fieldHints) → profileKey | null` in shared.
 - [x] **Check:** tests for field matching on samples from Devpost, Devfolio, Luma and a Google Form.
-- [ ] **Check:** manual run on a real registration page, stopping before submit. Not done yet: needs a person to allow Chrome's local network access prompt (see As built).
+- [x] **Check:** manual run on a real registration page, stopping before submit (done by a teammate on 2026-11-26 after allowing Chrome's local network access prompt).
 - [x] **Commit:** see 9.1.
 
 ## As built
@@ -43,5 +43,5 @@
 - **fill.js** is served by a route handler that writes `(fill)((matchField), API_URL)` from the functions' source text, so `matchField` stays tested in shared and both functions must be self-contained. A shared test runs `matchField` from its source text. The panel lives in a shadow root and uses `textContent` only. It skips password, hidden, checkbox and other non-text inputs, disabled, read-only, invisible and already-filled fields, and any field whose `maxlength` is shorter than the value (a pitch is never cut short). Values go through the prototype's `value` setter plus `input` and `change` events, so React and Vue forms see them. Filled fields get an ink-and-gold ring. Nothing is ever submitted.
 - **Trusted Types:** Google Forms enforces `require-trusted-types-for 'script'`, so the loader passes the script URL through a Trusted Types policy that allows that one URL only. `strict-dynamic` lets a script element inserted this way run.
 - **The bookmark link:** React 19 blocks `javascript:` URLs in `href`, so the address is set on the element in an effect. A Copy button is the alternative to dragging (WCAG 2.2 dragging movements).
-- **Verified:** on a fixture with Devpost-, Google-Form- and Luma-style markup served from the app, 7 fields were filled correctly and password, project name, an over-long pitch and a pre-typed email were left alone. On a real third-party page (docs.google.com) the script request stayed pending: Chrome's Local Network Access asks the person to allow a public site to reach localhost, and that prompt is for a person to answer.
+- **Verified:** on a fixture with Devpost-, Google-Form- and Luma-style markup served from the app, 7 fields were filled correctly and password, project name, an over-long pitch and a pre-typed email were left alone. On a real third-party page (docs.google.com) the script request stayed pending: Chrome's Local Network Access asks the person to allow a public site to reach localhost, and that prompt is for a person to answer. A teammate then ran it on a real registration page on 2026-11-26, allowed the prompt, and confirmed the filled fields without submitting.
 - **Limits:** first name is the first word of the name and the rest is the last name; a select must have an option exactly equal to the value ("M", not "Medium"); fields inside cross-origin frames can't be reached; only tested in Chrome.
