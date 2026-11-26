@@ -22,7 +22,7 @@
 **Kept small on purpose:**
 - No auth library: `node:crypto` scrypt, random tokens and a Prisma table.
 - No email: `set-password` prints a temporary password for the first sign-in or a forgotten one.
-- The sign-in rate limit is in memory.
+- The sign-in rate limit is one SQLite table (`LoginFailure`), not a cache or a library.
 
 ## Implementation
 
