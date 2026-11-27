@@ -1,12 +1,12 @@
 // Demo data: a fictional team and fictional hackathons, dated relative to now so the demo
 // always has live deadlines. Every hackathon here has source "demo" so later screens can label it.
 // Safe to run repeatedly: rows are upserted by fixed keys and demo tasks/assignments are rebuilt.
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { pgAdapter } from "../src/db";
 import { templateTasks } from "@hackops/shared";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/auth";
 
-const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }) });
+const db = new PrismaClient({ adapter: pgAdapter() });
 const now = Date.now();
 const at = (hours: number) => new Date(now + hours * 3_600_000);
 const days = (d: number) => at(d * 24);

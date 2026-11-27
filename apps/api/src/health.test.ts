@@ -7,7 +7,6 @@ import { AppModule } from "./app.module";
 let app: INestApplication;
 
 beforeAll(async () => {
-  process.env.DATABASE_URL = ":memory:";
   const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
   app = await mod.createNestApplication().init();
 });

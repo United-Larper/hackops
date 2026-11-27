@@ -11,6 +11,17 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      # The API tests run in a "test" schema of this database; production uses Neon.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hackops_test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hackops_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
