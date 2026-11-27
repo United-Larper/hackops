@@ -22,6 +22,7 @@ export function MemberForm({ member }: { member: MemberDto }) {
       email: str("email"),
       githubUrl: str("githubUrl"),
       linkedinUrl: str("linkedinUrl"),
+      portfolioUrl: str("portfolioUrl"),
       skills: (str("skills") ?? "")
         .split(",")
         .map((s) => s.trim())
@@ -65,6 +66,10 @@ export function MemberForm({ member }: { member: MemberDto }) {
         <label className={label}>
           LinkedIn
           <input name="linkedinUrl" type="url" defaultValue={member.linkedinUrl ?? ""} placeholder="https://linkedin.com/in/…" className={field} />
+        </label>
+        <label className={`${label} sm:col-span-2`}>
+          Portfolio site
+          <input name="portfolioUrl" type="url" defaultValue={member.portfolioUrl ?? ""} placeholder="https://…" className={field} />
         </label>
         <label className={`${label} sm:col-span-2`}>
           Skills
