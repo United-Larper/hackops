@@ -3,7 +3,7 @@
 
 ## hackops
 
-The team's hackathon manager: discovery, a workspace per hackathon, team workload, and a public portfolio. pnpm workspace: Next.js 16 web in `apps/web`, NestJS 11 API with Prisma 7 on SQLite in `apps/api`, and shared Zod schemas and pure functions in `packages/shared`. Product decisions are in `docs/spec.md`. The work is planned phase by phase in `docs/phases/`, with the index, build rules and progress in `docs/README.md`.
+The team's hackathon manager: discovery, a workspace per hackathon, team workload, and a public portfolio. pnpm workspace: Next.js 16 web in `apps/web`, NestJS 11 API with Prisma 7 on Postgres (Neon) in `apps/api`, and shared Zod schemas and pure functions in `packages/shared`. Product decisions are in `docs/spec.md`. The work is planned phase by phase in `docs/phases/`, with the index, build rules and progress in `docs/README.md`.
 
 ## Policy
 
@@ -14,7 +14,7 @@ The team's hackathon manager: discovery, a workspace per hackathon, team workloa
 - `GET /signup-profile` is the only route with open CORS (the bookmarklet calls it from third-party pages). It needs a member's own `fillToken` and returns only that member's sign-up fields plus the team name and pitch; never add CORS anywhere else.
 - Every API route needs a signed-in session except the `PUBLIC` list in `apps/api/src/auth.ts`. Adding a route there makes it reachable by anyone on this computer: it needs a reason in its comment and its own check (like a token).
 - Secrets (password hashes, fill tokens) live only in `MemberSecret`, never on `Member`: `toMemberDto` spreads the Member row. Session tokens are stored only as SHA-256 hashes.
-- The API binds to `127.0.0.1` (`main.ts`), also when hosted: only the web app reaches it, and it trusts the `x-client-address` the web app sends. The web app serves `/signup-profile` and `/calendar.ics` through rewrites in `next.config.ts`, and `proxy.ts` lists them as public.
+- The API binds to `127.0.0.1` (`main.ts`), also when hosted (on Render, `scripts/start-hosted.mjs` runs it inside the one web service): only the web app reaches it, and it trusts the `x-client-address` the web app sends. The web app serves `/signup-profile` and `/calendar.ics` through rewrites in `next.config.ts`, and `proxy.ts` lists them as public.
 - Outbound fetches of user-typed URLs go through `pointsInward()` (`apps/api/src/intel/submission-check.ts`) first and use its `guarded` dispatcher, whose DNS lookup refuses private addresses at connect time; scraper fetches go through `get()` in `apps/api/src/discovery/http.ts`, which refuses redirects off the source's site.
 - In `apps/web/`, any `catch` around `api()` starts with `unstable_rethrow(e)`, or it swallows the redirect to /login on an expired session. Server actions need no CSRF code: Next.js rejects cross-origin action posts.
 - Pages carry a nonce CSP from `proxy.ts`: no inline `<script>` and no third-party scripts. Signed-in checks of your own password (password change, two-step) answer 403, so `lib/api.ts` can keep treating every 401 except sign-in as an expired session.
@@ -32,6 +32,7 @@ The team's hackathon manager: discovery, a workspace per hackathon, team workloa
 - Before calling work done, run `pnpm check`. It builds `@hackops/shared` first; plain `pnpm test` and `pnpm typecheck` don't.
 - After editing `packages/shared`, run `pnpm --filter @hackops/shared build` before type-checking or testing api or web. Both read its `dist/`, not `src/`.
 - `apps/web` has no tests. Check it with `pnpm --filter web typecheck` and `pnpm --filter web build`.
+- The API tests run in a `test` schema of the dev database (`DATABASE_SCHEMA`, `test/global-setup.ts`) and drop only that schema each run; app data is in `public`. Never point `apps/api/.env` at the prod branch. CI uses a Postgres container.
 - Restore demo data with `SEED_PASSWORD=… pnpm --filter api db:seed` (without it, members keep their passwords and new ones have none; use `pnpm --filter api set-password <email>`). Never use `db:reset`, which wipes the database. The seed doesn't clear `result`, `resultNote` or retro text; clear those through the API.
 - After UI edits, run `impeccable detect --json <paths>` from `apps/web`. The CLI is in the impeccable skill's `scripts/` folder and isn't on PATH.
 

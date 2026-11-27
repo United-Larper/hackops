@@ -52,7 +52,7 @@ This is a **demo**. One shared team, running locally. Each member signs in with 
 | Web | Next.js 16 (App Router), React 19, Tailwind CSS 4, in `apps/web`, port **3200** |
 | API | NestJS 11 on Express, in `apps/api`, port **4000**. One `AppModule`, built with SWC |
 | Shared | `@hackops/shared`: Zod 4 schemas, enums, DTO types and pure functions (fit score, lifecycle phase, checks), used by both apps |
-| Database | SQLite through Prisma 7 (`@prisma/adapter-better-sqlite3`). One file, `apps/api/prisma/dev.db`. Swapping to Postgres later is a change of adapter and URL |
+| Database | Postgres on Neon through Prisma 7 (`@prisma/adapter-pg`, pooled URL; migrations on the direct URL). SQLite until phase 13 |
 | Validation | Zod schemas from `@hackops/shared`, through one `ZodPipe` at the API boundary |
 | Web ↔ API | Server components read from the API with `fetch`; server actions write through it. `API_URL` env var |
 | Tests | Vitest. One test per real rule (fit score, phase mapping, dedupe, checks). No tests for plain wiring |
