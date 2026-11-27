@@ -154,7 +154,6 @@ function Card({
   const due = c.nextDeadline;
   const live = c.stage === "building" && due?.kind === "submission";
   const pct = c.progress.total ? Math.round((c.progress.done / c.progress.total) * 100) : 0;
-  const score = c.fit?.score ?? null;
 
   return (
     <li
@@ -173,19 +172,10 @@ function Card({
         <Link href={`/h/${c.id}`} draggable={false} className="min-w-0 flex-1 text-[15px] leading-tight font-semibold text-balance after:absolute after:inset-0 after:rounded-lg hover:underline">
           {c.title}
         </Link>
-        {c.result ? (
+        {c.result && (
           <span className={`grid size-[22px] shrink-0 place-items-center rounded-[3px] font-display text-sm font-bold ${RESULT[c.result].cls}`} role="img" aria-label={RESULT[c.result].word}>
             {RESULT[c.result].letter}
           </span>
-        ) : (
-          score !== null && (
-            <span
-              className={`shrink-0 rounded-[3px] px-1.5 py-0.5 font-display text-sm leading-none font-bold tabular-nums ${score >= 60 ? "bg-gold text-on-gold" : "bg-panel-2"}`}
-              aria-label={`Fit ${score} out of 100`}
-            >
-              {score}
-            </span>
-          )
         )}
       </div>
 

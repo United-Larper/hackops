@@ -6,9 +6,9 @@ import { Icon } from "@/components/icon";
 import { EmptyState, PageHeader } from "@/components/shell/page-header";
 import { api, ApiError } from "@/lib/api";
 import { money } from "@/lib/format";
-import { clockTime, countdown, isUrgent, shortDate } from "@/lib/time";
+import { clockTime, isUrgent, shortDate } from "@/lib/time";
 import { decide } from "./actions";
-import { DecideButton, RefreshButton } from "./controls";
+import { DecideMenu, RefreshButton } from "./controls";
 
 export const metadata: Metadata = { title: "Discover" };
 
@@ -31,7 +31,7 @@ const qs = (s: Search, change: Partial<Search>) => {
 
 export default async function DiscoverPage({ searchParams }: { searchParams: Promise<Search> }) {
   const s = await searchParams;
-  const query = new URLSearchParams({ stage: "discovered", open: "1", sort: "fit" });
+  const query = new URLSearchParams({ stage: "discovered", open: "1", sort: "deadline" });
   if (s.region) query.set("region", s.region);
   if (s.category) query.set("category", s.category);
   if (s.within) query.set("closesWithin", s.within);
@@ -120,7 +120,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
       ) : (
         <section aria-labelledby="results-h">
           <h2 id="results-h" className="mb-2 text-sm text-muted">
-            {rows.length} open hackathon{rows.length === 1 ? "" : "s"}, best fit first
+            {rows.length} open hackathon{rows.length === 1 ? "" : "s"}, closing soonest first
           </h2>
           <ol className="divide-y divide-line overflow-hidden rounded-[10px] border border-line bg-panel">
             {shown.map((h) => (
@@ -142,19 +142,19 @@ function Row({ h, now, briefs }: { h: HackathonDto; now: Date; briefs: Record<st
   const next = h.registrationClosesAt ?? h.submissionDueAt;
   const nextLabel = h.registrationClosesAt ? "Registration closes" : "Submission due";
   const urgent = next ? isUrgent(next, now) : false;
-  const score = h.fit?.score ?? null;
+  const left = next ? timeLeft(next, now) : null;
   const place = h.mode === "online" ? "Online" : [h.city, h.country].filter(Boolean).join(", ") || "Place not listed";
 
   return (
     <li className="grid grid-cols-[52px_minmax(0,1fr)] gap-x-4 gap-y-3 px-4 py-4 sm:px-5 lg:grid-cols-[56px_minmax(0,1fr)_150px_170px_auto] lg:items-center">
       <div
-        className={`row-span-2 grid size-[52px] place-items-center rounded-md font-display leading-none lg:row-span-1 lg:size-14 ${
-          score === null ? "bg-panel-2 text-muted" : score >= 60 ? "bg-gold text-on-gold" : "bg-panel-2 text-text"
+        className={`row-span-2 grid size-[52px] place-items-center content-center rounded-md bg-panel-2 font-display leading-none lg:row-span-1 lg:size-14 ${
+          left === null ? "text-muted" : urgent ? "text-live-text" : "text-text"
         }`}
-        aria-label={score === null ? "No fit score" : `Fit ${score} out of 100`}
+        aria-label={left === null ? "No deadline listed" : `${left.n} ${left.unit.toLowerCase()} left`}
       >
-        <span className="text-[24px] font-extrabold">{score ?? "–"}</span>
-        <span className="-mt-1.5 text-xs font-bold tracking-[0.08em]">FIT</span>
+        <span className="text-[24px] font-extrabold tabular-nums">{left?.n ?? "–"}</span>
+        <span className="-mt-1.5 text-xs font-bold tracking-[0.08em]">{left?.unit ?? "DAYS"}</span>
       </div>
 
       <div className="min-w-0">
@@ -165,7 +165,6 @@ function Row({ h, now, briefs }: { h: HackathonDto; now: Date; briefs: Record<st
         <p className="mt-0.5 truncate text-[13px] text-muted">
           {[h.organizer, place, SOURCE[h.source] ?? h.source].filter(Boolean).join(" · ")}
         </p>
-        {h.fit && h.fit.reasons.length > 0 && <p className="mt-1 text-[13px]">{h.fit.reasons.join(" · ")}</p>}
         {summaryOf(h.eligibility) && <p className="mt-1 line-clamp-2 text-[13px] leading-snug">{summaryOf(h.eligibility)}</p>}
         <WinsLine h={h} briefs={briefs} />
         <Link href={`/h/${h.id}`} className="mt-1 inline-flex min-h-6 items-center text-[13px] font-medium underline">
@@ -190,12 +189,9 @@ function Row({ h, now, briefs }: { h: HackathonDto; now: Date; briefs: Record<st
         <p className="text-sm">
           <span className="block text-xs text-muted">{next ? nextLabel : "Deadline"}</span>
           {next ? (
-            <>
-              <span className={`font-display text-xl font-bold ${urgent ? "text-live-text" : ""}`}>{countdown(next, now)}</span>{" "}
-              <span className="text-[13px] text-muted">
-                {shortDate(next)}, {clockTime(next)}
-              </span>
-            </>
+            <span className={`text-[15px] font-semibold ${urgent ? "text-live-text" : ""}`}>
+              {shortDate(next)}, {clockTime(next)}
+            </span>
           ) : (
             <span className="font-display text-xl font-bold">Not listed</span>
           )}
@@ -203,19 +199,20 @@ function Row({ h, now, briefs }: { h: HackathonDto; now: Date; briefs: Record<st
       </div>
 
       <div className="col-start-2 flex gap-2 lg:col-start-auto lg:justify-end">
-        <form action={decide}>
-          <input type="hidden" name="id" value={h.id} />
-          <input type="hidden" name="stage" value="interested" />
-          <DecideButton primary>Interested</DecideButton>
-        </form>
-        <form action={decide}>
-          <input type="hidden" name="id" value={h.id} />
-          <input type="hidden" name="stage" value="skipped" />
-          <DecideButton>Skip</DecideButton>
-        </form>
+        <DecideMenu id={h.id} action={decide} />
       </div>
     </li>
   );
+}
+
+/** Whole days left, or whole hours on the last day. */
+function timeLeft(to: string, now: Date) {
+  const hours = Math.max(0, Math.floor((new Date(to).getTime() - now.getTime()) / 3_600_000));
+  if (hours >= 24) {
+    const n = Math.floor(hours / 24);
+    return { n, unit: n === 1 ? "DAY" : "DAYS" };
+  }
+  return { n: hours, unit: hours === 1 ? "HR" : "HRS" };
 }
 
 /** The "Summary: …" line of a curated-list entry (scripts/tracker-to-list.mjs); scraped events have none. */

@@ -56,7 +56,7 @@ export default async function WorkspaceLayout({ params, children }: Props & { ch
           ) : (
             <span>
               <span className="block text-xs text-muted">Owner</span>
-              <span className="text-muted">Set an accountable person in Team &amp; roles</span>
+              <span className="text-muted">Save the team in Team &amp; roles</span>
             </span>
           )}
         </p>
