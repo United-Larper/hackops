@@ -20,7 +20,7 @@ This is a **demo**. One shared team, running locally. Each member signs in with 
 ## 2. Goals, non-goals, anti-goals
 
 **Goals**
-- Discover hackathons automatically (Devpost, MLH, a curated Malaysian list), sorted by category, with a fit score.
+- Discover hackathons automatically (Devpost, MLH, a curated Malaysian list), sorted by the next deadline, with a day countdown.
 - Run every hackathon as a small project through a light lifecycle: Initiation → Planning → Execution → Monitoring → Closing.
 - Give each hackathon its own **workspace**: overview, tasks, team and roles, timeline, activity, links and submission, retro.
 - Team and responsibility management across all hackathons: skills, workload, who owns what.
@@ -51,11 +51,11 @@ This is a **demo**. One shared team, running locally. Each member signs in with 
 | Toolchain | Node 24 LTS, pnpm 10, TypeScript 5.8+ |
 | Web | Next.js 16 (App Router), React 19, Tailwind CSS 4, in `apps/web`, port **3200** |
 | API | NestJS 11 on Express, in `apps/api`, port **4000**. One `AppModule`, built with SWC |
-| Shared | `@hackops/shared`: Zod 4 schemas, enums, DTO types and pure functions (fit score, lifecycle phase, checks), used by both apps |
+| Shared | `@hackops/shared`: Zod 4 schemas, enums, DTO types and pure functions (track fit, lifecycle phase, checks), used by both apps |
 | Database | Postgres on Neon through Prisma 7 (`@prisma/adapter-pg`, pooled URL; migrations on the direct URL). SQLite until phase 13 |
 | Validation | Zod schemas from `@hackops/shared`, through one `ZodPipe` at the API boundary |
 | Web ↔ API | Server components read from the API with `fetch`; server actions write through it. `API_URL` env var |
-| Tests | Vitest. One test per real rule (fit score, phase mapping, dedupe, checks). No tests for plain wiring |
+| Tests | Vitest. One test per real rule (track fit, phase mapping, dedupe, checks). No tests for plain wiring |
 | Times | Stored in UTC, shown in **Malaysia time (Asia/Kuala_Lumpur)** |
 | Money | Prize amounts stored as an integer plus a currency code, as listed by the source. No conversion in the demo |
 | Icons and logo | **No React icon library** (no `lucide-react` and similar). Icons and the logo are SVG files from an outside source (picked in phase 01), placed in `apps/web/public` |
@@ -87,7 +87,7 @@ Every hackathon has a **stage**. The lifecycle **phase** is derived from the sta
 | Stage | Phase | What happens |
 |---|---|---|
 | `discovered` | Initiation | Found by a scraper or added by hand. Shown in Discover, not on the board |
-| `interested` | Initiation | Go/no-go: fit score, "what wins here", a decision note |
+| `interested` | Initiation | Go/no-go: "what wins here", a decision note |
 | `registered` | Planning | Roles picked, idea and prize tracks chosen, milestones set from the event dates |
 | `building` | Execution, Monitoring | Task board, progress notes, links, workload, pre-submission check |
 | `submitted` | Closing | Project links frozen into the portfolio |
@@ -107,21 +107,13 @@ Full Prisma schema in [phases/02-core-data-and-api.md](phases/02-core-data-and-a
 - **Task**: belongs to a hackathon; title, status (`todo`, `doing`, `done`), assignee, due date, order.
 - **Project**: name, description, tech, repo, demo, video, slides and Devpost links. Linked to many hackathons.
 - **Activity**: a hackathon's feed: automatic change entries and manual notes.
-- **Team**: one row: team name, pitch blurb, preferred tech, home city. Feeds the fit score and the sign-up assist.
+- **Team**: one row: team name and pitch blurb. Feeds the sign-up assist and the portfolio.
 - **MemberSecret**: one per member, kept apart from Member so a Member row can never leak it: scrypt password hash, the two-step sign-in key and the last code step used, and the member's own bookmarklet and calendar-feed token.
 - **Session**: a signed-in browser. Only the SHA-256 of the token is stored; the token lives in an httpOnly cookie. 14 days.
 
-## 7. Fit score
+## 7. Fit score (removed)
 
-A pure function in `@hackops/shared`, 0 to 100, with the reasons shown next to the score:
-
-- category overlap with the team's preferred tech and categories
-- prize size
-- reachability: online, or in person within Malaysia, or overseas (lower)
-- time left before registration closes (none left means 0)
-- team size limit versus team size
-
-The weights are constants in one file. Phase 11 can replace this with AI ranking.
+Dropped after phase 15: Discover sorts by the next deadline and shows the days left in the row's square instead. `Team.preferredCats` and `Team.homeCity` went with it (migration `20261129000000_drop_fit_score`). Prize-track fit (`trackFit`, phase 10) stays.
 
 ## 8. What the demo leaves for later
 

@@ -18,7 +18,7 @@ The team wants to enter more hackathons to gain experience, build a portfolio an
 
 ## Positioning
 
-A project-management tool built only for hackathons: each event is a small project that moves through a light lifecycle (Initiation → Planning → Execution → Monitoring → Closing) on its own as the stage changes, connected to discovery, fit scoring, past-winner analysis and a portfolio. Generic tools (Trello, Linear, Notion) don't find events, know their deadlines or produce a portfolio; hackathon platforms (Devpost, Devfolio) don't run the team's work.
+A project-management tool built only for hackathons: each event is a small project that moves through a light lifecycle (Initiation → Planning → Execution → Monitoring → Closing) on its own as the stage changes, connected to discovery, past-winner analysis and a portfolio. Generic tools (Trello, Linear, Notion) don't find events, know their deadlines or produce a portfolio; hackathon platforms (Devpost, Devfolio) don't run the team's work.
 
 ## Operating Context
 

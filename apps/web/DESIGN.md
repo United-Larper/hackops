@@ -133,7 +133,7 @@ A committed two-colour shell (ink and gold) over a neutral ground, with three st
 
 ### Primary
 - **Matchday Ink** (#0e0e0c): the rail, the fixtures panel, primary buttons, avatars. The frame every screen sits in.
-- **Tiger Gold** (#f4c21b): the active nav pill, the HACK in the wordmark, section headings on ink, the text of primary buttons, finalist results, fit-score badges. Always paired with ink, never on the light ground as text.
+- **Tiger Gold** (#f4c21b): the active nav pill, the HACK in the wordmark, section headings on ink, the text of primary buttons, finalist results. Always paired with ink, never on the light ground as text.
 
 ### Secondary
 - **Signal Red** (#ff4d2e on ink; Signal Red Text #c22e13 on light): the match clock and anything due within 24 hours.
