@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { HackathonInput, categorise, isSameEvent, type ScrapedHackathon } from "@hackops/shared";
+import { CATEGORIES, HackathonInput, categorise, isSameEvent, type ScrapedHackathon } from "@hackops/shared";
 import { PrismaService } from "../prisma.service";
 import { fetchDevpost } from "./devpost";
 import { fetchMlh } from "./mlh";
@@ -12,13 +12,6 @@ export const DEFAULT_FETCHERS: Fetchers = { devpost: fetchDevpost, mlh: () => fe
 export type SourceReport = { fetched: number; added: number; updated: number; duplicates: number; invalid: number; error?: string };
 
 const SOURCE_NAME: Record<string, string> = { devpost: "Devpost", mlh: "MLH", "my-list": "the Malaysian list" };
-const parseList = (s: string): string[] => {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return [];
-  }
-};
 
 @Injectable()
 export class DiscoveryService {
@@ -41,7 +34,6 @@ export class DiscoveryService {
 
   private async run(fetchers: Fetchers) {
     const report: Record<string, SourceReport> = {};
-    const categories = (await this.db.category.findMany()).map((c) => ({ slug: c.slug, keywords: parseList(c.keywords) }));
 
     for (const [source, fetch] of Object.entries(fetchers)) {
       const r: SourceReport = { fetched: 0, added: 0, updated: 0, duplicates: 0, invalid: 0 };
@@ -66,7 +58,6 @@ export class DiscoveryService {
           continue;
         }
         const { categories: _ignored, prizeTracks, ...fields } = parsed.data;
-        const data = { ...fields, prizeTracks: JSON.stringify(prizeTracks) };
 
         const same = known.find((k) => k.source === item.source && k.sourceId === item.sourceId);
         if (same) {
@@ -80,9 +71,9 @@ export class DiscoveryService {
           r.duplicates++;
           continue;
         }
-        const slugs = categorise([item.title, item.organizer ?? "", ...themes].join(" "), categories);
+        const slugs = categorise([item.title, item.organizer ?? "", ...themes].join(" "), CATEGORIES);
         const created = await this.db.$transaction(async (tx) => {
-          const h = await tx.hackathon.create({ data: { ...data, categories: { connect: slugs.map((slug) => ({ slug })) } } });
+          const h = await tx.hackathon.create({ data: { ...fields, prizeTracks, categories: slugs } });
           await tx.activity.create({ data: { hackathonId: h.id, kind: "change", text: `Found on ${SOURCE_NAME[item.source] ?? item.source}` } });
           return h;
         });

@@ -172,7 +172,7 @@ describe("intel endpoints", () => {
     });
 
   it("imports Devpost prize tracks, keeping a typed track's text and entering mark", async () => {
-    const h = await devpost({ prizeTracks: JSON.stringify([{ name: "Best Demo", description: "Our note", entering: true }]) });
+    const h = await devpost({ prizeTracks: [{ name: "Best Demo", description: "Our note", entering: true }] });
     answer({ "https://kiroween.devpost.com/": () => new Response(fixture("devpost-event.html")) });
     const ws = (await http().post(`/hackathons/${h.id}/tracks/import`).expect(200)).body;
     expect(ws.prizeTracks).toHaveLength(17);

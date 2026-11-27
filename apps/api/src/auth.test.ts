@@ -58,7 +58,7 @@ describe("the auth gate", () => {
   });
 
   it("refuses a form post from another site", async () => {
-    const h = await db.hackathon.create({ data: { source: "manual", title: "Hack", url: "https://example.com", mode: "online", stage: "interested" } });
+    const h = await db.hackathon.create({ data: { source: "my-list", title: "Hack", url: "https://example.com", mode: "online", stage: "interested" } });
     await anon().post(`/hackathons/${h.id}/stage`).type("form").send({ stage: "discovered" }).expect(401);
     expect((await db.hackathon.findUniqueOrThrow({ where: { id: h.id } })).stage).toBe("interested");
   });
@@ -154,7 +154,8 @@ describe("two-step sign-in", () => {
 
 describe("signed in", () => {
   it("records who made a change", async () => {
-    const h = (await http().post("/hackathons").send({ source: "manual", title: "Hack", url: "https://example.com", mode: "online" }).expect(201)).body;
+    const h = await db.hackathon.create({ data: { source: "my-list", title: "Hack", url: "https://example.com", mode: "online" } });
+    await http().patch(`/hackathons/${h.id}`).send({ decisionNote: "Worth a look" }).expect(200);
     await http().post(`/hackathons/${h.id}/notes`).send({ text: "Idea: flood maps" }).expect(201);
     const rows = await db.activity.findMany({ where: { hackathonId: h.id } });
     expect(rows.length).toBe(2);

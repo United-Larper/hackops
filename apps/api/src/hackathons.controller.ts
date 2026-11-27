@@ -3,7 +3,6 @@ import {
   BOARD_STAGES,
   BoardQuery,
   type BoardDto,
-  HackathonInput,
   HackathonPatch,
   HackathonQuery,
   NoteInput,
@@ -32,7 +31,7 @@ const LABELS: Record<string, string> = {
   startsAt: "start date", endsAt: "end date", registrationClosesAt: "registration deadline",
   submissionDueAt: "submission deadline", judgingAt: "judging date", prizeAmount: "prize", prizeCurrency: "prize currency",
   teamSizeMax: "team size", eligibility: "eligibility", prizeTracks: "prize tracks", categories: "categories",
-  ownerId: "owner", projectId: "linked project", decisionNote: "decision note", resultNote: "result note",
+  projectId: "linked project", decisionNote: "decision note", resultNote: "result note",
   retroWentWell: "retro", retroToChange: "retro",
 };
 
@@ -43,13 +42,10 @@ function regionWhere(region?: Region): Prisma.HackathonWhereInput {
   return {};
 }
 
+/** Where a hackathon came from is fixed once it's stored. */
 function writeData(body: HackathonPatch) {
-  const { categories, prizeTracks, source, sourceId, ...rest } = body;
-  return {
-    ...rest,
-    ...(prizeTracks !== undefined && { prizeTracks: JSON.stringify(prizeTracks) }),
-    ...(categories !== undefined && { categories: { set: categories.map((slug) => ({ slug })) } }),
-  };
+  const { source, sourceId, ...rest } = body;
+  return rest;
 }
 
 @Controller("hackathons")
@@ -63,7 +59,7 @@ export class HackathonsController {
   async list(@Query(new ZodPipe(HackathonQuery)) q: HackathonQuery) {
     const where: Prisma.HackathonWhereInput = {
       ...(q.stage && { stage: q.stage }),
-      ...(q.category && { categories: { some: { slug: q.category } } }),
+      ...(q.category && { categories: { has: q.category } }),
       ...(q.q && { title: { contains: q.q, mode: "insensitive" } }), // as on SQLite: Postgres compares case by default
       ...regionWhere(q.region),
     };
@@ -94,8 +90,8 @@ export class HackathonsController {
     const stages = q.skipped ? [...BOARD_STAGES, "skipped" as const] : BOARD_STAGES;
     const where: Prisma.HackathonWhereInput = {
       stage: { in: [...stages] },
-      ...(q.category && { categories: { some: { slug: q.category } } }),
-      ...(q.owner && { ownerId: q.owner }),
+      ...(q.category && { categories: { has: q.category } }),
+      ...(q.owner && { assignments: { some: { memberId: q.owner, accountable: true } } }),
       ...regionWhere(q.region),
       // Region and mode both constrain mode, so they combine with AND.
       ...(q.mode && { AND: [{ mode: { in: [q.mode, "hybrid"] } }] }),
@@ -157,7 +153,7 @@ export class HackathonsController {
       .flatMap((r) => (r.success && !known.has(r.data.name.toLowerCase()) ? [r.data] : []));
     const tracks: PrizeTrack[] = [...current, ...added].slice(0, 50);
     await this.db.$transaction(async (tx) => {
-      await tx.hackathon.update({ where: { id }, data: { prizeTracks: JSON.stringify(tracks) } });
+      await tx.hackathon.update({ where: { id }, data: { prizeTracks: tracks } });
       await logActivity(tx, id, added.length ? `Imported ${added.length} prize track${added.length === 1 ? "" : "s"} from Devpost` : "Checked Devpost: no new prize tracks");
     });
     return this.get(id);
@@ -167,20 +163,6 @@ export class HackathonsController {
   @Get(":id/check")
   check(@Param("id") id: string): Promise<SubmissionCheckDto> {
     return this.checks.run(id);
-  }
-
-  @Post()
-  async create(@Body(new ZodPipe(HackathonInput)) body: HackathonInput) {
-    const { categories, prizeTracks, ...rest } = body;
-    const row = await this.db.$transaction(async (tx) => {
-      const h = await tx.hackathon.create({
-        data: { ...rest, prizeTracks: JSON.stringify(prizeTracks), categories: { connect: categories.map((slug) => ({ slug })) } },
-        include: HACKATHON_INCLUDE,
-      });
-      await logActivity(tx, h.id, "Added by hand");
-      return h;
-    });
-    return toHackathonDto(row);
   }
 
   @Get(":id")
@@ -209,7 +191,7 @@ export class HackathonsController {
   @Post(":id/tasks")
   async addTask(@Param("id") id: string, @Body(new ZodPipe(TaskInput)) body: TaskInput) {
     return this.db.$transaction(async (tx) => {
-      const order = body.order ?? (await tx.task.count({ where: { hackathonId: id } }));
+      const order = await tx.task.count({ where: { hackathonId: id } }); // new tasks go last; only the template sets order otherwise
       const task = await tx.task.create({ data: { ...body, order, hackathonId: id }, include: { assignee: true } });
       await logActivity(tx, id, `Task added: ${task.title}`);
       return toTaskDto(task);

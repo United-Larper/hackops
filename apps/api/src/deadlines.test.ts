@@ -23,8 +23,8 @@ afterAll(() => app.close());
 describe("GET /deadlines", () => {
   it("returns in-scope items in the window with their group", async () => {
     const soon = new Date(Date.now() + 3 * 86_400_000);
-    const h = await db.hackathon.create({ data: { source: "manual", title: "Soon Hack", url: "https://example.com", mode: "online", stage: "registered", submissionDueAt: soon } });
-    await db.hackathon.create({ data: { source: "manual", title: "Scraped", url: "https://example.com/2", mode: "online", stage: "discovered", submissionDueAt: soon } });
+    const h = await db.hackathon.create({ data: { source: "my-list", title: "Soon Hack", url: "https://example.com", mode: "online", stage: "registered", submissionDueAt: soon } });
+    await db.hackathon.create({ data: { source: "my-list", title: "Scraped", url: "https://example.com/2", mode: "online", stage: "discovered", submissionDueAt: soon } });
     await db.task.create({ data: { hackathonId: h.id, title: "Record demo", dueAt: soon } });
 
     const items = (await http().get("/deadlines?days=7").expect(200)).body;
@@ -39,8 +39,8 @@ describe("GET /deadlines", () => {
     await db.task.deleteMany();
     await db.hackathon.deleteMany();
     const lastWeek = new Date(Date.now() - 7 * 86_400_000);
-    const h = await db.hackathon.create({ data: { source: "manual", title: "Done Hack", url: "https://example.com", mode: "online", stage: "submitted", judgingAt: lastWeek } });
-    await db.hackathon.create({ data: { source: "manual", title: "Scraped", url: "https://example.com/2", mode: "online", stage: "discovered", submissionDueAt: lastWeek } });
+    const h = await db.hackathon.create({ data: { source: "my-list", title: "Done Hack", url: "https://example.com", mode: "online", stage: "submitted", judgingAt: lastWeek } });
+    await db.hackathon.create({ data: { source: "my-list", title: "Scraped", url: "https://example.com/2", mode: "online", stage: "discovered", submissionDueAt: lastWeek } });
 
     await request(app.getHttpServer()).get("/calendar.ics").expect(404); // public, so it needs a member's token
     await request(app.getHttpServer()).get("/calendar.ics?token=not-a-real-token-at-all").expect(404);

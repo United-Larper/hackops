@@ -23,7 +23,7 @@ afterAll(() => app.close());
 describe("GET /signup-profile", () => {
   it("answers any origin, but only with its owner's token and only with the owner's sign-up fields", async () => {
     await http().put("/team").send({ name: "Demo Team", pitch: "We ship." }).expect(200);
-    await db.member.create({ data: { name: "Aina", email: "aina@example.com", skills: '["React"]', tshirtSize: "M", dietary: "Vegetarian" } });
+    await db.member.create({ data: { name: "Aina", email: "aina@example.com", skills: ["React"], tshirtSize: "M", dietary: "Vegetarian" } });
     await db.member.update({ where: { id: TESTER }, data: { tshirtSize: "L" } });
     const { fillToken } = (await http().post("/auth/fill-token").expect(201)).body as { fillToken: string };
 

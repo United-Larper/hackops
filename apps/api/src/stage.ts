@@ -14,7 +14,8 @@ export function logActivity(tx: Tx, hackathonId: string, text: string, kind: "ch
 /**
  * Stage change with its side effects (spec §5):
  * - moving to Registered creates the template task list, once;
- * - moving to Results needs a result; leaving Results clears it;
+ * - moving to Results needs a result; leaving Results clears it (the database also refuses a result elsewhere);
+ * - a note on a move to Registered or Skipped becomes the hackathon's decision note;
  * - the change and any note go into the activity feed.
  */
 export async function changeStage(db: PrismaService, id: string, input: StageInput) {
@@ -25,7 +26,11 @@ export async function changeStage(db: PrismaService, id: string, input: StageInp
     const h = await tx.hackathon.findUniqueOrThrow({ where: { id }, include: { _count: { select: { tasks: true } } } });
     await tx.hackathon.update({
       where: { id },
-      data: { stage: input.stage, result: input.stage === "results" ? input.result : null },
+      data: {
+        stage: input.stage,
+        result: input.stage === "results" ? input.result : null,
+        ...(input.note && (input.stage === "registered" || input.stage === "skipped") && { decisionNote: input.note }),
+      },
     });
 
     if (input.stage === "registered" && h._count.tasks === 0) {

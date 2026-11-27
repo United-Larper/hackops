@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Put, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import {
-  ACTIVE_STAGES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, workload,
+  ACTIVE_STAGES, CATEGORIES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, TEAM_ID, categoryRefs, workload,
   type HackathonResult, type MemberDetailDto, type ProjectDetailDto, type SignupProfileDto, type ProjectSummaryDto, type Role, type Stage, type TeamWorkloadDto,
 } from "@hackops/shared";
 import { z } from "zod";
@@ -11,12 +11,7 @@ import { newest, toMemberDto, toProjectDto, toTeamDto } from "./mappers";
 import { PrismaService } from "./prisma.service";
 
 // Members, projects, the team row and categories: plain reads and writes, so the controllers call Prisma directly.
-
-const jsonFields = <T extends Record<string, unknown>>(body: T, keys: (keyof T)[]) => {
-  const out: Record<string, unknown> = { ...body };
-  for (const k of keys) if (body[k] !== undefined) out[k as string] = JSON.stringify(body[k]);
-  return out as { [K in keyof T]: K extends (typeof keys)[number] ? string : T[K] };
-};
+// Categories are the CATEGORIES constant, not a table.
 
 @Controller("members")
 export class MembersController {
@@ -49,12 +44,12 @@ export class MembersController {
 
   @Post()
   async create(@Body(new ZodPipe(MemberInput)) body: MemberInput) {
-    return toMemberDto(await this.db.member.create({ data: jsonFields(body, ["skills", "preferredRoles"]) }));
+    return toMemberDto(await this.db.member.create({ data: body }));
   }
 
   @Patch(":id")
   async update(@Param("id") id: string, @Body(new ZodPipe(MemberPatch)) body: z.infer<typeof MemberPatch>) {
-    return toMemberDto(await this.db.member.update({ where: { id }, data: jsonFields(body, ["skills", "preferredRoles"]) }));
+    return toMemberDto(await this.db.member.update({ where: { id }, data: body }));
   }
 
   @Delete(":id")
@@ -87,12 +82,12 @@ export class ProjectsController {
 
   @Post()
   async create(@Body(new ZodPipe(ProjectInput)) body: ProjectInput) {
-    return toProjectDto(await this.db.project.create({ data: jsonFields(body, ["tech"]) }));
+    return toProjectDto(await this.db.project.create({ data: body }));
   }
 
   @Patch(":id")
   async update(@Param("id") id: string, @Body(new ZodPipe(ProjectPatch)) body: z.infer<typeof ProjectPatch>) {
-    return toProjectDto(await this.db.project.update({ where: { id }, data: jsonFields(body, ["tech"]) }));
+    return toProjectDto(await this.db.project.update({ where: { id }, data: body }));
   }
 
   @Delete(":id")
@@ -108,7 +103,7 @@ export class TeamController {
 
   @Get("team")
   async get() {
-    const team = await this.db.team.findUnique({ where: { id: "team" } });
+    const team = await this.db.team.findUnique({ where: { id: TEAM_ID } });
     return team ? toTeamDto(team) : null;
   }
 
@@ -135,8 +130,7 @@ export class TeamController {
 
   @Put("team")
   async put(@Body(new ZodPipe(TeamInput)) body: TeamInput) {
-    const data = jsonFields(body, ["preferredTech", "preferredCats"]);
-    return toTeamDto(await this.db.team.upsert({ where: { id: "team" }, create: data, update: data }));
+    return toTeamDto(await this.db.team.upsert({ where: { id: TEAM_ID }, create: body, update: body }));
   }
 
   /**
@@ -149,7 +143,7 @@ export class TeamController {
     res.setHeader("Access-Control-Allow-Origin", "*"); // set before any throw, so fill.js can read the 404 too
     const memberId = await fillTokenOwner(this.db, token);
     const [team, owner] = await Promise.all([
-      this.db.team.findUnique({ where: { id: "team" }, select: { name: true, pitch: true } }),
+      this.db.team.findUnique({ where: { id: TEAM_ID }, select: { name: true, pitch: true } }),
       memberId
         ? this.db.member.findUnique({
             where: { id: memberId },
@@ -163,8 +157,7 @@ export class TeamController {
   }
 
   @Get("categories")
-  async categories() {
-    const rows = await this.db.category.findMany({ orderBy: { name: "asc" } });
-    return rows.map((c) => ({ slug: c.slug, name: c.name }));
+  categories() {
+    return categoryRefs(CATEGORIES.map((c) => c.slug)).sort((a, b) => a.name.localeCompare(b.name));
   }
 }
