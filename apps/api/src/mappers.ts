@@ -1,12 +1,9 @@
 import {
   CATEGORIES,
-  TEAM_ID,
   categoryRefs,
-  fitScore,
   phaseOf,
   trackFit,
   type PrizeTrack,
-  type FitTeam,
   regionOf,
   type ActivityDto,
   type HackathonDto,
@@ -18,7 +15,6 @@ import {
   type WorkspaceDto,
 } from "@hackops/shared";
 import type { Prisma } from "./generated/prisma/client";
-import type { PrismaService } from "./prisma.service";
 
 // Database rows → API DTOs. Dates become ISO strings; category slugs become { slug, name } from CATEGORIES.
 
@@ -34,12 +30,11 @@ export const HACKATHON_INCLUDE = {
 } satisfies Prisma.HackathonInclude;
 type HackathonRow = Prisma.HackathonGetPayload<{ include: typeof HACKATHON_INCLUDE }>;
 
-export function toHackathonDto(h: HackathonRow, team: FitTeam | null = null, now = new Date()): HackathonDto {
+export function toHackathonDto(h: HackathonRow): HackathonDto {
   const { assignments, ...row } = h;
   const categories = categoryRefs(h.categories);
   return {
     ...row,
-    fit: team ? fitScore({ ...h, categories }, team, now) : null,
     source: h.source as HackathonDto["source"],
     mode: h.mode as HackathonDto["mode"],
     stage: h.stage as Stage,
@@ -79,8 +74,8 @@ export function toProjectDto(p: Prisma.ProjectGetPayload<object>): ProjectDto {
   return p;
 }
 
-export function toWorkspaceDto(h: WorkspaceRow, team: FitTeam | null = null): WorkspaceDto {
-  const base = toHackathonDto(h, team);
+export function toWorkspaceDto(h: WorkspaceRow): WorkspaceDto {
+  const base = toHackathonDto(h);
   const tech = h.project?.tech ?? [];
   const categoryWords = CATEGORIES.filter((c) => h.categories.includes(c.slug)).flatMap((c) => [c.name, ...c.keywords]);
   return {
@@ -98,14 +93,9 @@ export function toMemberDto(m: Prisma.MemberGetPayload<object>): MemberDto {
 }
 
 export function toTeamDto(t: Prisma.TeamGetPayload<object>): TeamDto {
-  return { name: t.name, pitch: t.pitch, preferredCats: t.preferredCats, homeCity: t.homeCity };
+  return { name: t.name, pitch: t.pitch };
 }
 
-/** The team profile as the fit score needs it, or null before a team profile exists. */
-export async function fitTeam(db: PrismaService): Promise<FitTeam | null> {
-  const [team, size] = await Promise.all([db.team.findUnique({ where: { id: TEAM_ID } }), db.member.count()]);
-  return team ? { preferredCats: team.preferredCats, homeCity: team.homeCity, size: Math.max(1, size) } : null;
-}
 
 /** Sort key for "newest first": when the event ended, else its submission deadline, else its last edit. */
 export const newest = (h: { endsAt: Date | null; submissionDueAt: Date | null; updatedAt: Date }) => (h.endsAt ?? h.submissionDueAt ?? h.updatedAt).getTime();

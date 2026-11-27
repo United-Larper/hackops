@@ -2,7 +2,7 @@ import { unstable_rethrow } from "next/navigation";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
-import type { CategoryDto, MeDto, MemberDto, TeamDto } from "@hackops/shared";
+import type { MeDto, MemberDto, TeamDto } from "@hackops/shared";
 import { EmptyState, PageHeader } from "@/components/shell/page-header";
 import { api, ApiError } from "@/lib/api";
 import { logout } from "@/lib/actions";
@@ -26,11 +26,10 @@ export default async function SettingsPage() {
   let team: TeamDto | null = null;
   let me: MeDto | null = null;
   let members: MemberDto[] = [];
-  let categories: CategoryDto[] = [];
   let error: string | null = null;
   try {
-    [team, members, categories, me] = await Promise.all([
-      api<TeamDto | null>("/team"), api<MemberDto[]>("/members"), api<CategoryDto[]>("/categories"), api<MeDto>("/auth/me"),
+    [team, members, me] = await Promise.all([
+      api<TeamDto | null>("/team"), api<MemberDto[]>("/members"), api<MeDto>("/auth/me"),
     ]);
   } catch (e) {
     unstable_rethrow(e); // let the sign-in redirect through
@@ -63,7 +62,7 @@ export default async function SettingsPage() {
           )}
           <section aria-labelledby="team-h" className="flex flex-col gap-3">
             <h2 id="team-h" className="font-display text-2xl font-bold">Team profile</h2>
-            <TeamForm team={team} categories={categories} />
+            <TeamForm team={team} />
           </section>
 
           <section aria-labelledby="signup-h" className="flex flex-col gap-3">

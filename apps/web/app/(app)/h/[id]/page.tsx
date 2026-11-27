@@ -82,11 +82,6 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
               Why the team is entering. It&apos;s written when someone decides from the board, or added from the stage control.
             </p>
           )}
-          {h.fit && h.fit.reasons.length > 0 && (
-            <p className="mt-4 border-t border-line pt-3 text-[13px] text-muted">
-              Fit <span className="font-display text-base font-bold text-text">{h.fit.score}</span> · {h.fit.reasons.join(" · ")}
-            </p>
-          )}
         </section>
         <Suspense fallback={<WinnersLoading />}>
           <Winners id={h.id} />

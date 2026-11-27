@@ -60,9 +60,9 @@ export async function deleteTask(id: string, taskId: string) {
   return write(() => api(`${hack(id)}/tasks/${encodeURIComponent(taskId)}`, { method: "DELETE" }), "The task wasn't removed.");
 }
 
-export type Assignment = { memberId: string; role: "lead" | "developer" | "designer" | "pitch"; accountable: boolean };
+export type Assignment = { memberId: string; role: "lead" | "developer" | "designer" | "pitch" };
 
-/** Replace the hackathon's team; the accountable person is its owner (shown on the board and the header). */
+/** Replace the hackathon's team. The API makes whoever saves it accountable: its owner on the board and the header. */
 export async function saveTeam(id: string, team: Assignment[]) {
   return write(() => api(`${hack(id)}/team`, { method: "PUT", body: JSON.stringify(team) }), "The team didn't save.");
 }
@@ -90,23 +90,9 @@ export async function saveProjectLinks(projectId: string, links: ProjectLinks) {
   return write(() => api(`/projects/${encodeURIComponent(projectId)}`, { method: "PATCH", body: JSON.stringify(links) }), "The links didn't save.");
 }
 
-/** Create or update a member; a new member opens on their own page. */
-export async function saveMember(id: string | null, fields: MemberInput): Promise<MoveResult> {
-  let created: string | undefined;
-  const r = await write(async () => {
-    const body = JSON.stringify(fields);
-    if (id) await api(`/members/${encodeURIComponent(id)}`, { method: "PATCH", body });
-    else created = (await api<{ id: string }>("/members", { method: "POST", body })).id;
-  }, "The member didn't save.");
-  if (created) redirect(`/team/${created}`);
-  return r;
-}
-
-/** Remove a member; their assignments go with them and their tasks become unassigned. */
-export async function removeMember(id: string): Promise<MoveResult> {
-  const r = await write(() => api(`/members/${encodeURIComponent(id)}`, { method: "DELETE" }), "The member wasn't removed.");
-  if (!r.error) redirect("/team");
-  return r;
+/** Update a member. Members are added and removed only in the database (pnpm --filter api add-member). */
+export async function saveMember(id: string, fields: MemberInput): Promise<MoveResult> {
+  return write(() => api(`/members/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(fields) }), "The member didn't save.");
 }
 
 /** Create or update a project; a new project opens on its own page. */

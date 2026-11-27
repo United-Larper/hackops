@@ -6,6 +6,7 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "./app.module";
 import { PrismaService } from "./prisma.service";
+import { newToken, sha256 } from "./auth";
 import { signedIn, TESTER } from "../test/auth";
 
 let app: INestApplication;
@@ -29,6 +30,13 @@ beforeEach(async () => {
   await db.project.deleteMany();
   await db.member.createMany({ data: [{ id: "m1", name: "Aina" }, { id: "m2", name: "Wei Jie" }] });
 });
+
+/** A client signed in as another member: whoever saves a lineup is its accountable member. */
+const as = async (memberId: string) => {
+  const token = newToken();
+  await db.session.create({ data: { tokenHash: sha256(token), memberId, expiresAt: new Date(Date.now() + 86_400_000) } });
+  return request.agent(app.getHttpServer()).set("authorization", `Bearer ${token}`);
+};
 
 const KL = { title: "KL AI Hack", url: "https://example.com/kl", mode: "in_person", city: "Kuala Lumpur", country: "Malaysia", categories: ["ai-ml"], submissionDueAt: "2030-01-10T10:00:00Z" };
 // Hackathons come from discovery or import-list, never a route: fixtures go straight in, then are read back through the API.
@@ -88,13 +96,13 @@ describe("hackathons", () => {
     expect(building.decisionNote).toBe("Close to home");
   });
 
-  it("team needs exactly one accountable member and the change is logged", async () => {
+  it("whoever saves the team is accountable, must be in it, and the change is logged", async () => {
     const h = await create();
-    await http().put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "lead" }]).expect(400);
+    await http().put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "lead" }]).expect(400); // the tester isn't in it
     const ws = (
-      await http()
+      await (await as("m1"))
         .put(`/hackathons/${h.id}/team`)
-        .send([{ memberId: "m1", role: "lead", accountable: true }, { memberId: "m2", role: "developer" }])
+        .send([{ memberId: "m1", role: "lead" }, { memberId: "m2", role: "developer", accountable: true }])
         .expect(200)
     ).body;
     expect(ws.assignments).toHaveLength(2);
@@ -129,7 +137,7 @@ describe("board", () => {
     const c = await create({ ...KL, title: "Skip me" });
     await create({ ...KL, title: "Still discovered" });
     await stage(a.id, { stage: "registered" });
-    await http().put(`/hackathons/${a.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }, { memberId: "m2", role: "developer" }]).expect(200);
+    await (await as("m1")).put(`/hackathons/${a.id}/team`).send([{ memberId: "m1", role: "lead" }, { memberId: "m2", role: "developer" }]).expect(200);
     const tasks = (await http().get(`/hackathons/${a.id}`)).body.tasks;
     await http().patch(`/hackathons/${a.id}/tasks/${tasks[0].id}`).send({ status: "done" }).expect(200);
     await stage(b.id, { stage: "interested" });
@@ -159,16 +167,18 @@ describe("board", () => {
 
 describe("members, projects, team", () => {
   it("create and validate", async () => {
-    const m = (await http().post("/members").send({ name: "Harish", skills: ["Flutter"], preferredRoles: ["developer"] }).expect(201)).body;
+    await http().post("/members").send({ name: "Harish" }).expect(404); // members are added only in the database
+    await http().delete(`/members/${TESTER}`).expect(404);
+    const m = (await http().patch(`/members/${TESTER}`).send({ skills: ["Flutter"] }).expect(200)).body;
     expect(m.skills).toEqual(["Flutter"]);
-    await http().post("/members").send({ name: "", email: "not-an-email" }).expect(400);
+    await http().patch(`/members/${TESTER}`).send({ email: "not-an-email" }).expect(400);
 
     const p = (await http().post("/projects").send({ name: "Banjir Watch", tech: ["Flutter"], repoUrl: "https://github.com/x/y" }).expect(201)).body;
     expect(p.tech).toEqual(["Flutter"]);
     await http().post("/projects").send({ name: "X", repoUrl: "ftp://nope" }).expect(400);
 
-    const t = (await http().put("/team").send({ name: "Kopi & Commit", preferredCats: ["ai-ml"] }).expect(200)).body;
-    expect(t).toEqual({ name: "Kopi & Commit", pitch: null, homeCity: "Kuala Lumpur", preferredCats: ["ai-ml"] });
+    const t = (await http().put("/team").send({ name: "Kopi & Commit" }).expect(200)).body;
+    expect(t).toEqual({ name: "Kopi & Commit", pitch: null });
     await http().put("/team").send({ name: "" }).expect(400);
   });
 });
@@ -179,8 +189,8 @@ describe("team workload", () => {
     const b = await create({ ...KL, title: "Overlapping Hack", startsAt: "2030-01-09T00:00:00Z" });
     await create({ ...KL, title: "Only interested" });
     for (const h of [a, b]) await http().post(`/hackathons/${h.id}/stage`).send({ stage: "registered" }).expect(200);
-    await http().put(`/hackathons/${a.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }]).expect(200);
-    await http().put(`/hackathons/${b.id}/team`).send([{ memberId: "m1", role: "pitch", accountable: false }, { memberId: "m2", role: "lead", accountable: true }]).expect(200);
+    await (await as("m1")).put(`/hackathons/${a.id}/team`).send([{ memberId: "m1", role: "lead" }]).expect(200);
+    await (await as("m2")).put(`/hackathons/${b.id}/team`).send([{ memberId: "m1", role: "pitch" }, { memberId: "m2", role: "lead" }]).expect(200);
     const ws = (await http().get(`/hackathons/${a.id}`).expect(200)).body;
     await http().patch(`/hackathons/${a.id}/tasks/${ws.tasks[0].id}`).send({ assigneeId: "m1" }).expect(200);
 
@@ -201,7 +211,7 @@ describe("member history", () => {
     const recent = await create({ ...KL, title: "Recent Hack", endsAt: "2029-06-02T00:00:00Z" });
     const live = await create({ ...KL, title: "Live Hack" });
     for (const h of [old, recent, live]) {
-      await http().put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "designer", accountable: true }]).expect(200);
+      await (await as("m1")).put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "designer" }]).expect(200);
     }
     await http().post(`/hackathons/${old.id}/stage`).send({ stage: "results", result: "won" }).expect(200);
     await http().post(`/hackathons/${recent.id}/stage`).send({ stage: "submitted" }).expect(200);
@@ -243,8 +253,8 @@ describe("portfolio", () => {
     const sent = await create({ ...KL, title: "Sent Hack", endsAt: "2029-06-02T00:00:00Z", categories: [] });
     const live = await create({ ...KL, title: "Live Hack" });
     await http().patch(`/hackathons/${won.id}`).send({ projectId: p.id, retroWentWell: "secret retro", decisionNote: "secret decision" }).expect(200);
-    await http().put(`/hackathons/${won.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }, { memberId: "m2", role: "pitch" }]).expect(200);
-    await http().put(`/hackathons/${sent.id}/team`).send([{ memberId: "m2", role: "developer", accountable: true }]).expect(200);
+    await (await as("m1")).put(`/hackathons/${won.id}/team`).send([{ memberId: "m1", role: "lead" }, { memberId: "m2", role: "pitch" }]).expect(200);
+    await (await as("m2")).put(`/hackathons/${sent.id}/team`).send([{ memberId: "m2", role: "developer" }]).expect(200);
     await http().post(`/hackathons/${won.id}/stage`).send({ stage: "results", result: "won" }).expect(200);
     await http().post(`/hackathons/${sent.id}/stage`).send({ stage: "submitted" }).expect(200);
     await http().post(`/hackathons/${live.id}/stage`).send({ stage: "building" }).expect(200);
@@ -272,7 +282,7 @@ describe("portfolio", () => {
     await db.member.update({ where: { id: "m1" }, data: { email: "aina@example.com", tshirtSize: "S", dietary: "Halal", organisation: "UM" } });
     const h = await create({ ...KL, title: "Done Hack" });
     await http().patch(`/hackathons/${h.id}`).send({ decisionNote: "secret decision", retroWentWell: "secret retro", retroToChange: "secret change" }).expect(200);
-    await http().put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }]).expect(200);
+    await (await as("m1")).put(`/hackathons/${h.id}/team`).send([{ memberId: "m1", role: "lead" }]).expect(200);
     await http().post(`/hackathons/${h.id}/stage`).send({ stage: "results", result: "finalist", note: "secret note" }).expect(200);
     await http().patch(`/hackathons/${h.id}`).send({ resultNote: "secret judges feedback" }).expect(200);
     const p = (await http().post("/projects").send({ name: "Banjir Watch", tech: ["Flutter"] }).expect(201)).body;

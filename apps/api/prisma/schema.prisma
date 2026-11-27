@@ -143,11 +143,9 @@ model Activity {
 }
 
 model Team {
-  id            String   @id @default("team") // TEAM_ID: the one row
-  name          String
-  pitch         String?
-  preferredCats String[] @default([]) // category slugs
-  homeCity      String // default in TeamInput
+  id    String  @id @default("team") // TEAM_ID: the one row
+  name  String
+  pitch String?
 }
 
 // Failed sign-ins in the last 15 minutes, by email and by the browser's address. In the database so an API

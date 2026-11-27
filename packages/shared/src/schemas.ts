@@ -84,7 +84,7 @@ export const HackathonQuery = z.object({
   open: z.literal("1").optional(),
   /** Only events whose next deadline is within this many days. */
   closesWithin: z.coerce.number().int().min(1).max(365).optional(),
-  sort: z.enum(["fit", "deadline", "created"]).default("created"),
+  sort: z.enum(["deadline", "created"]).default("created"),
 });
 export type HackathonQuery = z.infer<typeof HackathonQuery>;
 
@@ -119,11 +119,11 @@ export type TaskInput = z.infer<typeof TaskInput>;
 export const TaskPatch = patchOf(TaskInput);
 export type TaskPatch = z.infer<typeof TaskPatch>;
 
+/** A hackathon's lineup. Whoever saves it is the accountable one, so it has no accountable field. */
 export const TeamAssignmentsInput = z
-  .array(z.object({ memberId: z.string().min(1), role: z.enum(ROLES), accountable: z.boolean().default(false) }))
+  .array(z.object({ memberId: z.string().min(1), role: z.enum(ROLES) }))
   .max(20)
-  .refine((a) => new Set(a.map((x) => x.memberId)).size === a.length, "A member can only be added once")
-  .refine((a) => a.length === 0 || a.filter((x) => x.accountable).length === 1, "Exactly one member must be accountable");
+  .refine((a) => new Set(a.map((x) => x.memberId)).size === a.length, "A member can only be added once");
 export type TeamAssignmentsInput = z.infer<typeof TeamAssignmentsInput>;
 
 /** The note's author is whoever is signed in. */
@@ -160,8 +160,6 @@ export const ProjectPatch = patchOf(ProjectInput);
 export const TeamInput = z.object({
   name: text(120),
   pitch: optionalText(2000),
-  preferredCats: tags.default([]),
-  homeCity: text(100).default("Kuala Lumpur"),
 });
 export type TeamInput = z.infer<typeof TeamInput>;
 

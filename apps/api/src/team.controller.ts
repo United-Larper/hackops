@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Put, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import {
-  ACTIVE_STAGES, CATEGORIES, MemberInput, MemberPatch, ProjectInput, ProjectPatch, TeamInput, TEAM_ID, categoryRefs, workload,
+  ACTIVE_STAGES, CATEGORIES, MemberPatch, ProjectInput, ProjectPatch, TeamInput, TEAM_ID, categoryRefs, workload,
   type HackathonResult, type MemberDetailDto, type ProjectDetailDto, type SignupProfileDto, type ProjectSummaryDto, type Role, type Stage, type TeamWorkloadDto,
 } from "@hackops/shared";
 import { z } from "zod";
@@ -42,20 +42,10 @@ export class MembersController {
     };
   }
 
-  @Post()
-  async create(@Body(new ZodPipe(MemberInput)) body: MemberInput) {
-    return toMemberDto(await this.db.member.create({ data: body }));
-  }
-
+  // Members are added and removed only in the database (pnpm --filter api add-member), never through the API.
   @Patch(":id")
   async update(@Param("id") id: string, @Body(new ZodPipe(MemberPatch)) body: z.infer<typeof MemberPatch>) {
     return toMemberDto(await this.db.member.update({ where: { id }, data: body }));
-  }
-
-  @Delete(":id")
-  @HttpCode(204)
-  async remove(@Param("id") id: string) {
-    await this.db.member.delete({ where: { id } });
   }
 }
 

@@ -2,6 +2,7 @@ import { unstable_rethrow } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { MemberDto, TeamWorkloadDto, WorkloadRow } from "@hackops/shared";
+import { Accountable } from "@/components/accountable";
 import { Icon } from "@/components/icon";
 import { EmptyState, PageHeader } from "@/components/shell/page-header";
 import { api, ApiError } from "@/lib/api";
@@ -27,18 +28,11 @@ export default async function TeamPage() {
 
   return (
     <>
-      <PageHeader
-        title="Team"
-        action={
-          <Link href="/team/new" className="inline-flex min-h-10 items-center gap-2 rounded-md bg-rail px-4 text-sm font-semibold text-gold transition-colors hover:bg-rail-2">
-            <Icon name="plus" size={16} /> Add member
-          </Link>
-        }
-      />
+      <PageHeader title="Team" />
       {error ? (
         <EmptyState title="Team unavailable">{error}</EmptyState>
       ) : members.length === 0 ? (
-        <EmptyState title="No members yet">Add each member with their skills and preferred roles. Their workload across active hackathons and who is accountable for what will show up here.</EmptyState>
+        <EmptyState title="No members yet">Members are added in the database: <code>pnpm --filter api add-member "Name" email</code>. Their workload across active hackathons and who is accountable for what will show up here.</EmptyState>
       ) : (
         <>
           <section aria-labelledby="members-h" className="flex flex-col gap-3">
@@ -100,7 +94,7 @@ function MemberRow({ m, row, busiest, title }: { m: MemberDto; row?: WorkloadRow
   );
 }
 
-/** Members down the side, active hackathons across: each cell is the member's role, with A for the one accountable person. */
+/** Members down the side, active hackathons across: each cell is the member's role, with a star for the one accountable person. */
 function Grid({ members, work, rows }: { members: MemberDto[]; work: TeamWorkloadDto; rows: Map<string, WorkloadRow> }) {
   const cell = (memberId: string, hackathonId: string) => rows.get(memberId)?.hackathons.find((x) => x.id === hackathonId);
   return (
@@ -169,14 +163,5 @@ function Grid({ members, work, rows }: { members: MemberDto[]; work: TeamWorkloa
         </div>
       )}
     </section>
-  );
-}
-
-function Accountable() {
-  return (
-    <span className="grid size-[18px] place-items-center rounded-[3px] bg-text font-display text-xs font-bold text-ground">
-      <span aria-hidden>A</span>
-      <span className="sr-only">Accountable</span>
-    </span>
   );
 }

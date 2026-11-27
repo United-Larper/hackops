@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { CategoryDto, TeamDto } from "@hackops/shared";
+import type { TeamDto } from "@hackops/shared";
 import { Icon } from "@/components/icon";
 import { saveTeamProfile } from "@/lib/actions";
 
 const field = "min-h-10 rounded-md border border-line bg-panel px-3 text-[15px] font-normal";
 const label = "flex flex-col gap-1.5 text-sm font-medium";
 
-/** The team row: what sign-up forms ask about the team, plus what the fit score reads. */
-export function TeamForm({ team, categories }: { team: TeamDto | null; categories: CategoryDto[] }) {
+/** The team row: what sign-up forms ask about the team. */
+export function TeamForm({ team }: { team: TeamDto | null }) {
   const [status, setStatus] = useState<{ text: string; error?: boolean } | null>(null);
   const [pending, start] = useTransition();
 
@@ -18,8 +18,6 @@ export function TeamForm({ team, categories }: { team: TeamDto | null; categorie
     const fields = {
       name: str("name") ?? "",
       pitch: str("pitch"),
-      homeCity: str("homeCity") ?? "Kuala Lumpur",
-      preferredCats: fd.getAll("cats").map(String),
     };
     start(async () => {
       const r = await saveTeamProfile(fields);
@@ -40,31 +38,12 @@ export function TeamForm({ team, categories }: { team: TeamDto | null; categorie
           Team name
           <input name="name" required maxLength={120} defaultValue={team?.name} autoComplete="off" className={field} />
         </label>
-        <label className={label}>
-          Home city
-          <input name="homeCity" required maxLength={100} defaultValue={team?.homeCity ?? "Kuala Lumpur"} className={field} />
-        </label>
         <label className={`${label} sm:col-span-2`}>
           Pitch
           <textarea name="pitch" rows={3} maxLength={2000} defaultValue={team?.pitch ?? ""} className={`${field} py-2 leading-relaxed`} />
           <span className="text-xs font-normal text-muted">Two or three sentences on who the team is. Forms that ask about the team get this, and so does the public portfolio.</span>
         </label>
       </div>
-
-      {categories.length > 0 && (
-        <fieldset className="flex flex-col gap-2 border-t border-line pt-4">
-          <legend className="float-left mb-1.5 w-full text-sm font-medium">Categories the team goes for</legend>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {categories.map((c) => (
-              <label key={c.slug} className="flex min-h-10 items-center gap-2 text-[15px]">
-                <input type="checkbox" name="cats" value={c.slug} defaultChecked={team?.preferredCats.includes(c.slug)} className="size-[18px] accent-[var(--text)]" />
-                {c.name}
-              </label>
-            ))}
-          </div>
-          <span className="text-xs text-muted">Discover's fit score favours these and events near the home city.</span>
-        </fieldset>
-      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <button disabled={pending} className="min-h-10 rounded-md bg-rail px-4 text-sm font-semibold text-gold transition-colors hover:bg-rail-2 disabled:opacity-50">
