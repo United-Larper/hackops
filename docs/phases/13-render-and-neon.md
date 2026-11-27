@@ -22,12 +22,14 @@ Check: deploy the Blueprint, sign in, open the calendar link from Settings.
 ## Known limits
 
 - ponytail: the free service sleeps after 15 idle minutes, so the discovery and submission-check crons only run while it's awake. Upgrade: a paid instance, or a Render cron job that calls the refresh.
-- ponytail: Render appends its proxy to `X-Forwarded-For`, so without `CLIENT_ADDRESS_HEADER` all browsers may share one per-address sign-in limit. Upgrade: confirm the header Render sets and set the variable.
 
 ## As built
 
 - Two Neon branches only (`prod`, `dev`): the tests share `dev` but stay in their own `test` schema, so a run never touches dev data.
 - Render's build installs pnpm with `npm install -g pnpm@10.34.7`; Node 26 dropped corepack, so locally use `npx pnpm@10.34.7` or install pnpm.
-- 13.2 is built but not yet checked on a real deploy: it stays unticked until the Blueprint is deployed, sign-in works and the calendar link from Settings opens. Then note here which header carries the browser's address, for `CLIENT_ADDRESS_HEADER`.
+- 13.2 checked on a real deploy (27 Nov 2026, `https://hackops-f04o.onrender.com`): the Blueprint built and migrated, sign-in works, and the calendar link from Settings downloads the `.ics`. The API port isn't reachable from outside.
+- `SITE_URL` must be the service's real address. The first deploy kept the guessed `https://hackops.onrender.com`, so the calendar and bookmarklet links pointed at another site, while everything else (HSTS, secure cookie) looked fine. It's read at build time: fix it with Save, rebuild, and deploy.
+- The browser's address: Render sits behind Cloudflare and puts its own address last in `X-Forwarded-For`, so without `CLIENT_ADDRESS_HEADER` a wrong sign-in was recorded under a proxy address, not the browser's. With `CLIENT_ADDRESS_HEADER=true-client-ip` it's the browser's own (checked against the address the browser sees), so `render.yaml` sets it.
+- ponytail: not yet checked whether Render replaces a `True-Client-IP` header that a browser sends itself. If it doesn't, a browser could pick its own address for the per-address limit (the per-email limit still holds). Upgrade: send a sign-in with a made-up `True-Client-IP` and check the recorded address.
 - No SQLite data carried over: no one had real rows in `dev.db`, so `prod` starts fresh (add members, then `set-password`).
 - Title search uses `mode: "insensitive"`, keeping SQLite's case-insensitive `LIKE` behaviour on Postgres.

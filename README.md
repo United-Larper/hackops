@@ -45,13 +45,13 @@ Only the web app faces the internet. The API keeps listening on `127.0.0.1` on t
 One free Render web service runs both apps: `scripts/start-hosted.mjs` applies migrations, starts the API on `127.0.0.1:4000` inside the service and the web app on Render's port. The API is never public, so everything above still holds. The database is the Neon `prod` branch.
 
 1. Neon: create the project in the region closest to the service (Singapore, `ap-southeast-1`, matches `render.yaml`). Copy the `prod` branch's pooled URL (host has `-pooler`) and direct URL.
-2. Render → New → Blueprint → this repository. It reads `render.yaml` and asks for `DATABASE_URL` (pooled), `DATABASE_URL_UNPOOLED` (direct) and `SITE_URL`. Render shows the address (`https://hackops-xxxx.onrender.com`) only once the service exists: put in a guess, then fix `SITE_URL` under Environment and redeploy, since the web build reads it.
+2. Render → New → Blueprint → this repository. It reads `render.yaml` and asks for `DATABASE_URL` (pooled), `DATABASE_URL_UNPOOLED` (direct) and `SITE_URL`. Render shows the address (`https://hackops-xxxx.onrender.com`) only once the service exists: put in a guess, then set `SITE_URL` to the real address under Environment and choose Save, rebuild, and deploy, since the web build reads it. Until then the calendar and bookmarklet links in Settings point at the guessed address.
 3. First member: from your machine, pass the `prod` URLs on the command line, so `apps/api/.env` keeps pointing at `dev` (variables already set win over `.env`):
    ```bash
    DATABASE_URL='<prod pooled URL>' DATABASE_URL_UNPOOLED='<prod direct URL>' pnpm --filter api set-password <email>
    ```
    The same prefix works for `SEED_PASSWORD=… pnpm --filter api db:seed`. Never point `.env` itself at `prod`: `pnpm dev` would run the crons against prod data, and `pnpm check` would build its `test` schema there.
-4. Sign-in limit per address: Render's proxy adds its own address to `X-Forwarded-For`, so by default every browser may share one limit (safe, but one attacker can lock everyone out of sign-in for 15 minutes). Check which header holds your own address, then set `CLIENT_ADDRESS_HEADER` to it (likely `true-client-ip`) and redeploy. Only use a header Render sets and overwrites itself, never one a browser can send.
+4. Sign-in limit per address: Render's proxy adds its own address to `X-Forwarded-For`, so by default every browser may share one limit (safe, but one attacker can lock everyone out of sign-in for 15 minutes). `render.yaml` sets `CLIENT_ADDRESS_HEADER=true-client-ip`, the header Render (behind Cloudflare) fills with the browser's address; that was checked on a real deploy. Only use a header the host sets and overwrites itself, never one a browser can send.
 
 Limits of the free plan: the service sleeps after 15 minutes without visits (the next visit takes about a minute to wake it), and the daily discovery refresh and hourly submission check only run while it's awake. A paid instance, or a cron service calling it, removes that.
 
