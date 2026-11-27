@@ -37,7 +37,7 @@ describe("GET /signup-profile", () => {
     expect(res.headers["access-control-allow-origin"]).toBe("*");
     expect(res.body.team).toEqual({ name: "Demo Team", pitch: "We ship." });
     expect(res.body.member).toMatchObject({ name: "Test Person", email: "tester@example.com", tshirtSize: "L" });
-    expect(Object.keys(res.body.member).sort()).toEqual(["dietary", "email", "githubUrl", "linkedinUrl", "name", "organisation", "tshirtSize"]);
+    expect(Object.keys(res.body.member).sort()).toEqual(["dietary", "email", "githubUrl", "linkedinUrl", "name", "organisation", "portfolioUrl", "tshirtSize"]);
     expect(res.text).not.toContain("Aina"); // a token never shows anyone else's details
 
     await http().post("/auth/fill-token").expect(201); // rotating retires the old token

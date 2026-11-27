@@ -137,7 +137,7 @@ export class TeamController {
       memberId
         ? this.db.member.findUnique({
             where: { id: memberId },
-            select: { name: true, email: true, githubUrl: true, linkedinUrl: true, organisation: true, tshirtSize: true, dietary: true },
+            select: { name: true, email: true, githubUrl: true, linkedinUrl: true, portfolioUrl: true, organisation: true, tshirtSize: true, dietary: true },
           })
         : null,
     ]);

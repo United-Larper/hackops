@@ -85,7 +85,7 @@ function fill(match: (hints: string) => ProfileKey | null) {
       // ponytail: first word is the first name, the rest the last name; the person fixes it in review if not.
       Object.assign(values, {
         fullName: m.name, firstName: first, lastName: rest.join(" ") || null, email: m.email, organisation: m.organisation,
-        github: m.githubUrl, linkedin: m.linkedinUrl, tshirt: m.tshirtSize, dietary: m.dietary,
+        github: m.githubUrl, linkedin: m.linkedinUrl, portfolio: m.portfolioUrl, tshirt: m.tshirtSize, dietary: m.dietary,
       });
     }
     const text = (id: string) => document.getElementById(id)?.textContent ?? "";

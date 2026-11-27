@@ -16,6 +16,7 @@ const samples: Record<string, [string, ProfileKey | null][]> = {
     ["firstName First Name", "firstName"],
     ["lastName Last Name", "lastName"],
     ["linkedinProfile LinkedIn", "linkedin"],
+    ["portfolioUrl Portfolio or personal website", "portfolio"],
     ["educationInstitution College or University", "organisation"],
     ["tShirtSize T-shirt size", "tshirt"],
     ["userName Username", null],
