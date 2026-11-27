@@ -188,7 +188,10 @@ export async function login(_: LoginState, fd: FormData): Promise<LoginState> {
   try {
     // The API also limits failed sign-ins per browser address. The last x-forwarded-for entry is the one the nearest
     // proxy added (Next adds the socket address when there's none); earlier entries are whatever the browser sent.
-    const address = (await headers()).get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "";
+    // CLIENT_ADDRESS_HEADER names a header the host sets itself instead (README, Hosting on Render); never one a browser can send.
+    const h = await headers();
+    const named = process.env.CLIENT_ADDRESS_HEADER;
+    const address = (named ? h.get(named) : h.get("x-forwarded-for")?.split(",").at(-1))?.trim() ?? "";
     const code = String(fd.get("code") ?? "").trim() || undefined;
     session = await api<SessionDto>("/auth/login", {
       method: "POST",

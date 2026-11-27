@@ -1,0 +1,25 @@
+# Render Blueprint: one free web service runs both apps (scripts/start-hosted.mjs); the database is Neon.
+# Render → New → Blueprint → this repo. It asks for the values marked sync: false.
+services:
+  - type: web
+    name: hackops
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm install -g pnpm@10.34.7 && pnpm install --frozen-lockfile && pnpm build
+    startCommand: node scripts/start-hosted.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: API_URL # read at build time too (next.config.ts rewrites); 127.0.0.1, not localhost, which may be ::1
+        value: http://127.0.0.1:4000
+      - key: DATABASE_URL # Neon pooled URL (host has "-pooler")
+        sync: false
+      - key: DATABASE_URL_UNPOOLED # Neon direct URL, for migrations
+        sync: false
+      - key: SITE_URL # https://<service name>.onrender.com, or your own domain. Read at build time: redeploy after changing it
+        sync: false
+      # Optional, once checked (README, Hosting on Render): the header Render sets to the browser's address.
+      # - key: CLIENT_ADDRESS_HEADER
+      #   value: true-client-ip
