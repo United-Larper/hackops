@@ -23,3 +23,8 @@ _bmad/
 _bmad-output/
 *.db-wal
 *.db-shm
+
+# The team's own hackathon list and copied pages: kept out of git (import with pnpm --filter api import-list)
+apps/api/data/*.local.json
+/seed.html
+apps/api/seed.html

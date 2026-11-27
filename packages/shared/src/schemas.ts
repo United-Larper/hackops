@@ -52,7 +52,7 @@ export const HackathonInput = z.object({
   prizeAmount: z.number().int().min(0).nullish(),
   prizeCurrency: z.string().trim().length(3).toUpperCase().nullish(),
   teamSizeMax: z.number().int().min(1).max(50).nullish(),
-  eligibility: optionalText(2000),
+  eligibility: optionalText(4000), // the curated list keeps every tracker fact here
   prizeTracks: z.array(PrizeTrackSchema).max(50).default([]),
   categories: z.array(z.string().trim().min(1)).max(20).default([]), // category slugs
 });

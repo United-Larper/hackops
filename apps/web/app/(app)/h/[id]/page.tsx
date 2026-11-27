@@ -68,6 +68,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
             </div>
           ))}
         </dl>
+        {h.eligibility && <Details text={h.eligibility} />}
         <PrizeTracks hackathonId={h.id} tracks={h.prizeTracks} hasProject={Boolean(h.project)} canImport={h.source === "devpost"} />
       </div>
 
@@ -92,6 +93,30 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
         </Suspense>
       </div>
     </div>
+  );
+}
+
+/** The eligibility text: plain prose from a scraper, or "Label: text" lines from the curated list (scripts/tracker-to-list.mjs). */
+function Details({ text }: { text: string }) {
+  const lines = text.split("\n").map((line) => {
+    const m = line.match(/^([A-Z][^:]{0,60}): (.+)$/);
+    return m ? { label: m[1] === "From the team's Opportunities Tracker" ? "Tracker" : m[1], value: m[2] } : { label: null, value: line };
+  });
+  const summary = lines.find((l) => l.label === "Summary");
+  const rows = lines.filter((l) => l !== summary && l.value.trim());
+  return (
+    <section aria-labelledby="details-h" className="rounded-[10px] border border-line bg-panel">
+      <h2 id="details-h" className="px-4 pt-4 font-display text-xl font-bold sm:px-5">Details</h2>
+      {summary && <p className="mx-4 mt-3 rounded-[6px] bg-panel-2 px-4 py-3 text-[15px] leading-relaxed sm:mx-5">{summary.value}</p>}
+      <dl className="mt-2 divide-y divide-line">
+        {rows.map((l, i) => (
+          <div key={i} className="grid gap-1 px-4 py-3 sm:grid-cols-[170px_minmax(0,1fr)] sm:gap-4 sm:px-5">
+            <dt className="text-[13px] text-muted">{l.label ?? "Eligibility"}</dt>
+            <dd className="text-[15px] leading-relaxed">{l.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
