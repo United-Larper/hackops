@@ -59,6 +59,7 @@ model Member {
   email          String?       @unique // login; lowercased by MemberInput
   githubUrl      String?
   linkedinUrl    String?
+  portfolioUrl   String? // personal site
   skills         String[]      @default([])
   preferredRoles String[]      @default([]) // Role[]
   organisation   String?
