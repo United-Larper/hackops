@@ -1,4 +1,7 @@
 import {
+  CATEGORIES,
+  TEAM_ID,
+  categoryRefs,
   fitScore,
   phaseOf,
   trackFit,
@@ -17,28 +20,25 @@ import {
 import type { Prisma } from "./generated/prisma/client";
 import type { PrismaService } from "./prisma.service";
 
-// Database rows → API DTOs. Lists stored as JSON strings are parsed here, dates become ISO strings.
+// Database rows → API DTOs. Dates become ISO strings; category slugs become { slug, name } from CATEGORIES.
 
-export const list = <T = string>(s: string): T[] => {
-  try {
-    const v = JSON.parse(s);
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
-};
 /** Stored prize tracks; rows from before phase 10 have no "entering" mark. */
-export const tracksOf = (s: string): PrizeTrack[] => list<PrizeTrack>(s).map((t) => ({ ...t, entering: t.entering ?? false }));
+export const tracksOf = (j: Prisma.JsonValue): PrizeTrack[] =>
+  (Array.isArray(j) ? (j as PrizeTrack[]) : []).map((t) => ({ ...t, entering: t.entering ?? false }));
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const ref = (m: { id: string; name: string } | null) => (m ? { id: m.id, name: m.name } : null);
 
-export const HACKATHON_INCLUDE = { categories: true, owner: true } satisfies Prisma.HackathonInclude;
+/** The owner is whoever is accountable in the hackathon's lineup. */
+export const HACKATHON_INCLUDE = {
+  assignments: { where: { accountable: true }, include: { member: { select: { id: true, name: true } } } },
+} satisfies Prisma.HackathonInclude;
 type HackathonRow = Prisma.HackathonGetPayload<{ include: typeof HACKATHON_INCLUDE }>;
 
 export function toHackathonDto(h: HackathonRow, team: FitTeam | null = null, now = new Date()): HackathonDto {
-  const categories = h.categories.map((c) => ({ slug: c.slug, name: c.name }));
+  const { assignments, ...row } = h;
+  const categories = categoryRefs(h.categories);
   return {
-    ...h,
+    ...row,
     fit: team ? fitScore({ ...h, categories }, team, now) : null,
     source: h.source as HackathonDto["source"],
     mode: h.mode as HackathonDto["mode"],
@@ -52,7 +52,7 @@ export function toHackathonDto(h: HackathonRow, team: FitTeam | null = null, now
     registrationClosesAt: iso(h.registrationClosesAt),
     submissionDueAt: iso(h.submissionDueAt),
     judgingAt: iso(h.judgingAt),
-    owner: ref(h.owner),
+    owner: ref(assignments.find((a) => a.accountable)?.member ?? null),
     categories,
     createdAt: h.createdAt.toISOString(),
     updatedAt: h.updatedAt.toISOString(),
@@ -60,8 +60,7 @@ export function toHackathonDto(h: HackathonRow, team: FitTeam | null = null, now
 }
 
 export const WORKSPACE_INCLUDE = {
-  ...HACKATHON_INCLUDE,
-  assignments: { include: { member: true } },
+  assignments: { include: { member: { select: { id: true, name: true } } } },
   tasks: { include: { assignee: true }, orderBy: [{ order: "asc" }, { id: "asc" }] },
   project: true,
   activity: { include: { member: true }, orderBy: { createdAt: "desc" }, take: 50 },
@@ -77,13 +76,13 @@ export function toActivityDto(a: Prisma.ActivityGetPayload<{ include: { member: 
 }
 
 export function toProjectDto(p: Prisma.ProjectGetPayload<object>): ProjectDto {
-  return { ...p, tech: list(p.tech) };
+  return p;
 }
 
 export function toWorkspaceDto(h: WorkspaceRow, team: FitTeam | null = null): WorkspaceDto {
   const base = toHackathonDto(h, team);
-  const tech = h.project ? list(h.project.tech) : [];
-  const categoryWords = h.categories.flatMap((c) => [c.name, ...list(c.keywords)]);
+  const tech = h.project?.tech ?? [];
+  const categoryWords = CATEGORIES.filter((c) => h.categories.includes(c.slug)).flatMap((c) => [c.name, ...c.keywords]);
   return {
     ...base,
     prizeTracks: base.prizeTracks.map((t) => ({ ...t, fit: trackFit(t, tech, categoryWords) })),
@@ -95,17 +94,17 @@ export function toWorkspaceDto(h: WorkspaceRow, team: FitTeam | null = null): Wo
 }
 
 export function toMemberDto(m: Prisma.MemberGetPayload<object>): MemberDto {
-  return { ...m, skills: list(m.skills), preferredRoles: list(m.preferredRoles) };
+  return { ...m, preferredRoles: m.preferredRoles as MemberDto["preferredRoles"] };
 }
 
 export function toTeamDto(t: Prisma.TeamGetPayload<object>): TeamDto {
-  return { name: t.name, pitch: t.pitch, preferredTech: list(t.preferredTech), preferredCats: list(t.preferredCats), homeCity: t.homeCity };
+  return { name: t.name, pitch: t.pitch, preferredCats: t.preferredCats, homeCity: t.homeCity };
 }
 
 /** The team profile as the fit score needs it, or null before a team profile exists. */
 export async function fitTeam(db: PrismaService): Promise<FitTeam | null> {
-  const [team, size] = await Promise.all([db.team.findUnique({ where: { id: "team" } }), db.member.count()]);
-  return team ? { preferredCats: list(team.preferredCats), homeCity: team.homeCity, size: Math.max(1, size) } : null;
+  const [team, size] = await Promise.all([db.team.findUnique({ where: { id: TEAM_ID } }), db.member.count()]);
+  return team ? { preferredCats: team.preferredCats, homeCity: team.homeCity, size: Math.max(1, size) } : null;
 }
 
 /** Sort key for "newest first": when the event ended, else its submission deadline, else its last edit. */

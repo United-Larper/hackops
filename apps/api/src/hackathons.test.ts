@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import type { INestApplication } from "@nestjs/common";
 import { TASK_TEMPLATE } from "@hackops/shared";
+import type { Prisma } from "./generated/prisma/client";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "./app.module";
@@ -26,16 +27,18 @@ beforeEach(async () => {
   await db.hackathon.deleteMany();
   await db.member.deleteMany({ where: { id: { not: TESTER } } });
   await db.project.deleteMany();
-  await db.category.deleteMany();
-  await db.category.create({ data: { slug: "ai-ml", name: "AI / ML" } });
   await db.member.createMany({ data: [{ id: "m1", name: "Aina" }, { id: "m2", name: "Wei Jie" }] });
 });
 
 const KL = { title: "KL AI Hack", url: "https://example.com/kl", mode: "in_person", city: "Kuala Lumpur", country: "Malaysia", categories: ["ai-ml"], submissionDueAt: "2030-01-10T10:00:00Z" };
-const create = async (body: object = KL) => (await http().post("/hackathons").send(body).expect(201)).body;
+// Hackathons come from discovery or import-list, never a route: fixtures go straight in, then are read back through the API.
+const create = async (body: object = KL) => {
+  const h = await db.hackathon.create({ data: { source: "my-list", ...body } as Prisma.HackathonCreateInput });
+  return (await http().get(`/hackathons/${h.id}`).expect(200)).body;
+};
 
 describe("hackathons", () => {
-  it("creates, filters by region and category, and logs the creation", async () => {
+  it("filters by region and category", async () => {
     const kl = await create();
     await create({ title: "Remote Hack", url: "https://example.com/r", mode: "online" });
     expect(kl).toMatchObject({ region: "malaysia", stage: "discovered", phase: "initiation", categories: [{ slug: "ai-ml" }] });
@@ -44,13 +47,11 @@ describe("hackathons", () => {
     expect(malaysia.map((h: { title: string }) => h.title)).toEqual(["KL AI Hack"]);
     const ai = (await http().get("/hackathons?category=ai-ml").expect(200)).body;
     expect(ai).toHaveLength(1);
-
-    const ws = (await http().get(`/hackathons/${kl.id}`).expect(200)).body;
-    expect(ws.activity[0]).toMatchObject({ kind: "change", text: "Added by hand" });
   });
 
   it("rejects bad input with the failing fields", async () => {
-    const res = await http().post("/hackathons").send({ ...KL, url: "javascript:alert(1)", mode: "teleport" }).expect(400);
+    const h = await create();
+    const res = await http().patch(`/hackathons/${h.id}`).send({ url: "javascript:alert(1)", mode: "teleport" }).expect(400);
     expect(res.body.issues.map((i: { path: string }) => i.path).sort()).toEqual(["mode", "url"]);
     await http().get("/hackathons/nope").expect(404);
   });
@@ -75,6 +76,16 @@ describe("hackathons", () => {
     expect(won).toMatchObject({ stage: "results", result: "won", phase: "closing" });
     const back = (await http().post(`/hackathons/${h.id}/stage`).send({ stage: "submitted" }).expect(200)).body;
     expect(back.result).toBeNull();
+    // The rule holds below the API too: a script writing the row directly is refused.
+    await expect(db.hackathon.update({ where: { id: h.id }, data: { result: "won" } })).rejects.toThrow(/Hackathon_result_needs_results_stage/);
+  });
+
+  it("a note on a move to Registered or Skipped becomes the decision note", async () => {
+    const h = await create();
+    const reg = (await http().post(`/hackathons/${h.id}/stage`).send({ stage: "registered", note: "Close to home" }).expect(200)).body;
+    expect(reg.decisionNote).toBe("Close to home");
+    const building = (await http().post(`/hackathons/${h.id}/stage`).send({ stage: "building", note: "Repo is up" }).expect(200)).body;
+    expect(building.decisionNote).toBe("Close to home");
   });
 
   it("team needs exactly one accountable member and the change is logged", async () => {
@@ -105,7 +116,7 @@ describe("patch", () => {
   it("changes only the fields sent", async () => {
     const h = await create({ ...KL, prizeTracks: [{ name: "Best AI" }] });
     const after = (await http().patch(`/hackathons/${h.id}`).send({ decisionNote: "Close to home" }).expect(200)).body;
-    expect(after).toMatchObject({ decisionNote: "Close to home", source: "manual", categories: [{ slug: "ai-ml" }], prizeTracks: [{ name: "Best AI" }] });
+    expect(after).toMatchObject({ decisionNote: "Close to home", source: "my-list", categories: [{ slug: "ai-ml", name: "AI / ML" }], prizeTracks: [{ name: "Best AI" }] });
   });
 });
 
@@ -113,12 +124,12 @@ describe("board", () => {
   const stage = (id: string, body: object) => http().post(`/hackathons/${id}/stage`).send(body).expect(200);
 
   it("groups cards by stage with progress and next deadline; filters; skipped only on request", async () => {
-    const a = await create({ ...KL, ownerId: undefined });
+    const a = await create();
     const b = await create({ title: "Remote Hack", url: "https://example.com/r", mode: "online" });
     const c = await create({ ...KL, title: "Skip me" });
     await create({ ...KL, title: "Still discovered" });
     await stage(a.id, { stage: "registered" });
-    await http().patch(`/hackathons/${a.id}`).send({ ownerId: "m1" }).expect(200);
+    await http().put(`/hackathons/${a.id}/team`).send([{ memberId: "m1", role: "lead", accountable: true }, { memberId: "m2", role: "developer" }]).expect(200);
     const tasks = (await http().get(`/hackathons/${a.id}`)).body.tasks;
     await http().patch(`/hackathons/${a.id}/tasks/${tasks[0].id}`).send({ status: "done" }).expect(200);
     await stage(b.id, { stage: "interested" });
@@ -137,7 +148,9 @@ describe("board", () => {
 
     const online = (await http().get("/hackathons/board?mode=online").expect(200)).body;
     expect([online.interested.length, online.registered.length]).toEqual([1, 0]);
-    expect((await http().get("/hackathons/board?owner=m1").expect(200)).body.interested).toHaveLength(0);
+    const mine = (await http().get("/hackathons/board?owner=m1").expect(200)).body;
+    expect([mine.interested.length, mine.registered.length]).toEqual([0, 1]);
+    expect((await http().get("/hackathons/board?owner=m2").expect(200)).body.registered).toHaveLength(0); // on the team, not accountable
     expect((await http().get("/hackathons/board?week=1").expect(200)).body.registered).toHaveLength(0);
     expect((await http().get("/hackathons/board?skipped=1").expect(200)).body.skipped).toMatchObject([{ title: "Skip me" }]);
     await http().get("/hackathons/board?mode=space").expect(400);
@@ -154,8 +167,8 @@ describe("members, projects, team", () => {
     expect(p.tech).toEqual(["Flutter"]);
     await http().post("/projects").send({ name: "X", repoUrl: "ftp://nope" }).expect(400);
 
-    const t = (await http().put("/team").send({ name: "Kopi & Commit", preferredTech: ["TypeScript"] }).expect(200)).body;
-    expect(t).toMatchObject({ name: "Kopi & Commit", homeCity: "Kuala Lumpur", preferredTech: ["TypeScript"] });
+    const t = (await http().put("/team").send({ name: "Kopi & Commit", preferredCats: ["ai-ml"] }).expect(200)).body;
+    expect(t).toEqual({ name: "Kopi & Commit", pitch: null, homeCity: "Kuala Lumpur", preferredCats: ["ai-ml"] });
     await http().put("/team").send({ name: "" }).expect(400);
   });
 });

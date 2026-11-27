@@ -3,7 +3,7 @@ import type { Source } from "./enums";
 
 /** What a source fetcher returns: a hackathon ready to store, plus the raw themes used for auto-categories. */
 export type ScrapedHackathon = Omit<HackathonInput, "categories" | "source" | "sourceId"> & {
-  source: Exclude<Source, "manual" | "demo">;
+  source: Exclude<Source, "demo">;
   sourceId: string;
   themes: string[];
 };
@@ -31,7 +31,7 @@ export function isSameEvent(
 }
 
 /** Category slugs whose keywords appear as whole words in the text (title, themes, organiser). */
-export function categorise(text: string, categories: { slug: string; keywords: string[] }[]) {
+export function categorise(text: string, categories: readonly { slug: string; keywords: readonly string[] }[]) {
   const hay = ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, " ")} `;
   return categories
     .filter((c) => c.keywords.some((k) => hay.includes(` ${k.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `)))

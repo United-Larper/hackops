@@ -1,6 +1,7 @@
 // HackOps data model. Spec: docs/spec.md §6; design notes: docs/phases/02-core-data-and-api.md.
-// Postgres on Neon. Enum-like fields are strings checked by Zod in @hackops/shared (kept from the SQLite days: no enum migrations),
-// and lists are JSON strings parsed at the API boundary.
+// Postgres on Neon. Enum-like fields are strings checked by Zod in @hackops/shared (no enum migrations); lists are Postgres arrays.
+// Categories are the CATEGORIES constant in @hackops/shared; a hackathon stores their slugs.
+// The database also checks that result is set only at stage "results" (a CHECK in the 20261128000000 migration: Prisma can't model it).
 
 generator client {
   provider            = "prisma-client"
@@ -15,7 +16,7 @@ datasource db {
 
 model Hackathon {
   id                   String       @id @default(cuid())
-  source               String // devpost | mlh | my-list | manual | demo
+  source               String // devpost | mlh | my-list | demo
   sourceId             String?
   title                String
   url                  String
@@ -32,18 +33,16 @@ model Hackathon {
   prizeCurrency        String?
   teamSizeMax          Int?
   eligibility          String?
-  prizeTracks          String       @default("[]") // JSON: { name, sponsor?, prize? }[]
+  prizeTracks          Json         @default("[]") // { name, sponsor?, prize? }[]
   stage                String       @default("discovered")
   decisionNote         String?
   result               String? // won | finalist | participated
   resultNote           String?
   retroWentWell        String?
   retroToChange        String?
-  ownerId              String?
-  owner                Member?      @relation("owner", fields: [ownerId], references: [id], onDelete: SetNull)
   projectId            String?
   project              Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  categories           Category[]
+  categories           String[]     @default([]) // slugs from CATEGORIES
   assignments          Assignment[]
   tasks                Task[]
   activity             Activity[]
@@ -54,26 +53,17 @@ model Hackathon {
   @@index([stage])
 }
 
-model Category {
-  id         String      @id @default(cuid())
-  slug       String      @unique
-  name       String
-  keywords   String      @default("[]") // JSON: string[]
-  hackathons Hackathon[]
-}
-
 model Member {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
-  email          String?      @unique // login; lowercased by MemberInput
+  email          String?       @unique // login; lowercased by MemberInput
   githubUrl      String?
   linkedinUrl    String?
-  skills         String       @default("[]") // JSON: string[]
-  preferredRoles String       @default("[]") // JSON: Role[]
+  skills         String[]      @default([])
+  preferredRoles String[]      @default([]) // Role[]
   organisation   String?
   tshirtSize     String?
   dietary        String?
-  owned          Hackathon[]  @relation("owner")
   assignments    Assignment[]
   tasks          Task[]
   activity       Activity[]
@@ -130,7 +120,7 @@ model Project {
   id          String      @id @default(cuid())
   name        String
   description String?
-  tech        String      @default("[]") // JSON: string[]
+  tech        String[]    @default([])
   repoUrl     String?
   demoUrl     String?
   videoUrl    String?
@@ -153,12 +143,11 @@ model Activity {
 }
 
 model Team {
-  id            String  @id @default("team")
+  id            String   @id @default("team") // TEAM_ID: the one row
   name          String
   pitch         String?
-  preferredTech String  @default("[]") // JSON: string[]
-  preferredCats String  @default("[]") // JSON: category slugs
-  homeCity      String  @default("Kuala Lumpur")
+  preferredCats String[] @default([]) // category slugs
+  homeCity      String // default in TeamInput
 }
 
 // Failed sign-ins in the last 15 minutes, by email and by the browser's address. In the database so an API

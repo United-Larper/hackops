@@ -136,7 +136,7 @@ export type PortfolioDto = {
 };
 
 /** GET /team. */
-export type TeamDto = { name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string };
+export type TeamDto = { name: string; pitch: string | null; preferredCats: string[]; homeCity: string };
 
 /**
  * GET /signup-profile?token=: what the bookmarklet may fill, and nothing else. Open to any origin, so it needs the token,

@@ -40,7 +40,8 @@ The team's hackathon manager: discovery, a workspace per hackathon, team workloa
 
 - Keep one Nest module (`AppModule`): no interface with one implementation, no factory for one product. One test per real rule. Mark a simplification with a known limit with a `ponytail:` comment naming the limit and the upgrade path.
 - In `apps/web/`, the API is called only server-side through `lib/api.ts` (`no-store`). Mutations are server actions in `lib/actions.ts` that call the API, then `refresh()`.
-- Change a hackathon's stage only through `POST /hackathons/:id/stage` (`apps/api/src/stage.ts`). Writing `stage` directly skips the task template, the activity log and the result rule.
+- Change a hackathon's stage only through `POST /hackathons/:id/stage` (`apps/api/src/stage.ts`). Writing `stage` directly skips the task template, the activity log and the decision note; a `result` outside stage `results` is refused by a database CHECK.
+- A hackathon's owner is its accountable `Assignment`, not a column. Categories are the `CATEGORIES` constant in `packages/shared` (a hackathon stores slugs), not a table. Lists are Postgres arrays; `prizeTracks` is `jsonb`.
 - In `apps/web/`: Next.js 16 differs from training data. Check `apps/web/node_modules/next/dist/docs/` before using an API you're unsure of.
 
 ## Known pitfalls

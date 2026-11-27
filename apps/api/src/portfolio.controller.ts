@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from "@nestjs/common";
-import { PortfolioQuery, ROLES, type HackathonResult, type Mode, type PortfolioDto, type PortfolioEntryDto, type Role } from "@hackops/shared";
-import { list, newest } from "./mappers";
+import { PortfolioQuery, ROLES, TEAM_ID, categoryRefs, type HackathonResult, type Mode, type PortfolioDto, type PortfolioEntryDto, type Role } from "@hackops/shared";
+import { newest } from "./mappers";
 import { PrismaService } from "./prisma.service";
 import { ZodPipe } from "./common/zod.pipe";
 
@@ -15,10 +15,10 @@ export class PortfolioController {
   @Get()
   async get(@Query(new ZodPipe(PortfolioQuery)) q: PortfolioQuery): Promise<PortfolioDto> {
     const [team, rows] = await Promise.all([
-      this.db.team.findUnique({ where: { id: "team" }, select: { name: true, pitch: true } }),
+      this.db.team.findUnique({ where: { id: TEAM_ID }, select: { name: true, pitch: true } }),
       this.db.hackathon.findMany({
         where: { stage: { in: ["submitted", "results"] } },
-        include: { categories: true, project: true, assignments: { include: { member: { select: { id: true, name: true } } } } },
+        include: { project: true, assignments: { include: { member: { select: { id: true, name: true } } } } },
       }),
     ]);
     rows.sort((a, b) => newest(b) - newest(a));
@@ -26,7 +26,7 @@ export class PortfolioController {
     const entries = rows.map((h): PortfolioEntryDto => {
       const p = h.project;
       const project = p
-        ? { name: p.name, description: p.description, tech: list(p.tech), repoUrl: p.repoUrl, demoUrl: p.demoUrl, videoUrl: p.videoUrl, slidesUrl: p.slidesUrl, devpostUrl: p.devpostUrl }
+        ? { name: p.name, description: p.description, tech: p.tech, repoUrl: p.repoUrl, demoUrl: p.demoUrl, videoUrl: p.videoUrl, slidesUrl: p.slidesUrl, devpostUrl: p.devpostUrl }
         : null;
       return {
         id: h.id,
@@ -39,7 +39,7 @@ export class PortfolioController {
         endsAt: h.endsAt?.toISOString() ?? null,
         stage: h.stage as PortfolioEntryDto["stage"],
         result: h.result as HackathonResult | null,
-        categories: h.categories.map((c) => ({ slug: c.slug, name: c.name })),
+        categories: categoryRefs(h.categories),
         project,
         team: h.assignments
           .map((a) => ({ id: a.member.id, name: a.member.name, role: a.role as Role }))

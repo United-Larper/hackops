@@ -19,10 +19,6 @@ export function TeamForm({ team, categories }: { team: TeamDto | null; categorie
       name: str("name") ?? "",
       pitch: str("pitch"),
       homeCity: str("homeCity") ?? "Kuala Lumpur",
-      preferredTech: (str("tech") ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s, i, all) => s && all.findIndex((x) => x.toLowerCase() === s.toLowerCase()) === i),
       preferredCats: fd.getAll("cats").map(String),
     };
     start(async () => {
@@ -52,11 +48,6 @@ export function TeamForm({ team, categories }: { team: TeamDto | null; categorie
           Pitch
           <textarea name="pitch" rows={3} maxLength={2000} defaultValue={team?.pitch ?? ""} className={`${field} py-2 leading-relaxed`} />
           <span className="text-xs font-normal text-muted">Two or three sentences on who the team is. Forms that ask about the team get this, and so does the public portfolio.</span>
-        </label>
-        <label className={`${label} sm:col-span-2`}>
-          Preferred tech
-          <input name="tech" defaultValue={team?.preferredTech.join(", ")} placeholder="Next.js, Python, Supabase" className={field} />
-          <span className="text-xs font-normal text-muted">Separate with commas.</span>
         </label>
       </div>
 

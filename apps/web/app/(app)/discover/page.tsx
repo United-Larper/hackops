@@ -20,7 +20,7 @@ const REGIONS = [
   { value: "online", label: "Online" },
   { value: "overseas", label: "Overseas" },
 ];
-const SOURCE: Record<string, string> = { devpost: "Devpost", mlh: "MLH", "my-list": "Malaysian list", manual: "Added by hand", demo: "Demo data" };
+const SOURCE: Record<string, string> = { devpost: "Devpost", mlh: "MLH", "my-list": "Malaysian list", demo: "Demo data" };
 const PAGE = 40;
 
 const qs = (s: Search, change: Partial<Search>) => {

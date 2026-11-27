@@ -1,21 +1,19 @@
-// Base data: the discovery categories, the one member and the team row. The hackathons come from the
+// Base data: the one member and the team row (categories are the CATEGORIES constant in @hackops/shared). The hackathons come from the
 // team's own list (pnpm --filter api import-list), not from here.
 // Safe to run repeatedly. It removes every other member, every project and any old demo hackathons.
 import { pgAdapter } from "../src/db";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/auth";
-import { upsertCategories } from "./categories";
+import { TEAM_ID } from "@hackops/shared";
 
 const db = new PrismaClient({ adapter: pgAdapter() });
-const json = (v: unknown) => JSON.stringify(v);
 // The one member comes from apps/api/.env (SEED_MEMBER_NAME, SEED_MEMBER_EMAIL), so a real address never lands in git.
 const MEMBERS = [{ name: process.env.SEED_MEMBER_NAME?.trim() ?? "", email: process.env.SEED_MEMBER_EMAIL?.trim().toLowerCase() ?? "" }];
 
 async function main() {
   // Checked before anything is deleted: without a member, the seed would remove everyone.
   if (MEMBERS.some((m) => !m.name || !m.email.includes("@"))) throw new Error("Set SEED_MEMBER_NAME and SEED_MEMBER_EMAIL in apps/api/.env first");
-  await upsertCategories(db);
-  // Deleting a member drops their sessions, secret and assignments, and clears them as owner or assignee.
+  // Deleting a member drops their sessions, secret and assignments, and clears them as assignee.
   // Deleting a hackathon drops its tasks, assignments and activity.
   const emails = MEMBERS.map((m) => m.email);
   await db.member.deleteMany({ where: { OR: [{ email: null }, { email: { notIn: emails } }] } });
@@ -30,8 +28,8 @@ async function main() {
     const passwordHash = await hashPassword(seedPassword);
     for (const memberId of ids) await db.memberSecret.upsert({ where: { memberId }, create: { memberId, passwordHash }, update: { passwordHash } });
   }
-  const team = { name: "Kopi & Commit", pitch: "Four friends from KL who ship in a weekend.", preferredTech: json(["TypeScript", "Python", "Flutter", "AI"]), preferredCats: json(["ai-ml", "fintech", "smart-city", "edtech"]), homeCity: "Kuala Lumpur" };
-  await db.team.upsert({ where: { id: "team" }, create: team, update: team });
+  const team = { name: "Kopi & Commit", pitch: "Four friends from KL who ship in a weekend.", preferredCats: ["ai-ml", "fintech", "smart-city", "edtech"], homeCity: "Kuala Lumpur" };
+  await db.team.upsert({ where: { id: TEAM_ID }, create: team, update: team });
 
   const counts = { hackathons: await db.hackathon.count(), members: await db.member.count(), projects: await db.project.count(), tasks: await db.task.count() };
   console.log("Seeded", counts);
