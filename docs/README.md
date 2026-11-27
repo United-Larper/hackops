@@ -137,8 +137,8 @@ Concretely:
 - [x] 13.2 One Render service for both apps (`render.yaml`, `scripts/start-hosted.mjs`)
 
 ### 15 Schema cleanup
-- [ ] 15.1 Migration (categories carried over, lists to arrays, result check)
-- [ ] 15.2 Shared
-- [ ] 15.3 API (with tests)
-- [ ] 15.4 Web
-- [ ] 15.5 Docs and prod
+- [x] 15.1 Migration (categories carried over, lists to arrays, result check)
+- [x] 15.2 Shared
+- [x] 15.3 API (with tests)
+- [x] 15.4 Web
+- [x] 15.5 Docs and prod
