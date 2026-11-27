@@ -38,7 +38,7 @@ export type PrizeTrack = z.infer<typeof PrizeTrackSchema>;
 export const HackathonInput = z.object({
   title: text(200),
   url,
-  source: z.enum(SOURCES).default("manual"),
+  source: z.enum(SOURCES),
   sourceId: optionalText(200),
   organizer: optionalText(200),
   mode: z.enum(MODES),
@@ -60,7 +60,6 @@ export type HackathonInput = z.infer<typeof HackathonInput>;
 
 /** PATCH: any hackathon field, plus the workspace fields. Stage changes go through StageInput. */
 export const HackathonPatch = patchOf(HackathonInput).extend({
-  ownerId: z.string().nullish(),
   projectId: z.string().nullish(),
   decisionNote: optionalText(2000),
   resultNote: optionalText(2000),
@@ -115,7 +114,6 @@ export const TaskInput = z.object({
   status: z.enum(TASK_STATUSES).default("todo"),
   assigneeId: z.string().nullish(),
   dueAt: date,
-  order: z.number().int().min(0).optional(),
 });
 export type TaskInput = z.infer<typeof TaskInput>;
 export const TaskPatch = patchOf(TaskInput);
@@ -162,7 +160,6 @@ export const ProjectPatch = patchOf(ProjectInput);
 export const TeamInput = z.object({
   name: text(120),
   pitch: optionalText(2000),
-  preferredTech: tags.default([]),
   preferredCats: tags.default([]),
   homeCity: text(100).default("Kuala Lumpur"),
 });
