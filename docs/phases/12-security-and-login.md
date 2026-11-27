@@ -118,7 +118,7 @@
 - **Who did what:** `logActivity` reads the signed-in member from `AsyncLocalStorage`, so every change line and note records its author with no change at the call sites. The Activity tab shows the name on change lines, and the note form lost its "From" picker. Cron jobs and the seed write with no author.
 - **Web:**
   - `proxy.ts` (Next 16's name for middleware) only checks that the cookie exists. It sends you to `/login?next=…` and skips `/login`, `/portfolio`, `/fill.js` and static files.
-  - The real check is the API. `lib/api.ts` turns a 401 into `redirect("/login")`, except on `/auth/login` and `/auth/password`, where a 401 means a wrong password.
+  - The real check is the API. `lib/api.ts` turns a 401 into `redirect("/login")`, except on `/auth/login`, where a 401 means a wrong password or code. Signed-in checks of your own password (password change, two-step) answer 403, so they never hit that redirect.
   - Every `catch` around `api()` starts with `unstable_rethrow(e)` so that redirect isn't swallowed.
   - The cookie is `httpOnly`, `sameSite=lax`, and `secure` when `SITE_URL` is https.
   - `next` must be a path inside the app (no `//host`).

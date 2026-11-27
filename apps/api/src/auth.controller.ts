@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, HttpCode, HttpException, HttpStatus, Post, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Headers, HttpCode, HttpException, HttpStatus, Post, UnauthorizedException } from "@nestjs/common";
 import { LoginInput, PasswordInput, TwoStepInput, type MeDto, type SessionDto, type TwoStepSetupDto } from "@hackops/shared";
 import { currentSession, hashPassword, newToken, newTotpSecret, SESSION_DAYS, sha256, totpStep, verifyPassword } from "./auth";
 import { ZodPipe } from "./common/zod.pipe";
@@ -15,21 +15,29 @@ const WINDOW_MS = 15 * 60_000;
 export class AuthController {
   constructor(private readonly db: PrismaService) {}
 
-  /** 429 once an account or an address has used up its tries. Every password or code check goes through this first. */
-  private async guard(email: string, address: string) {
+  /**
+   * Every password or code check starts here. The try is recorded as a failure first and counted with itself
+   * included, so tries that arrive at once can't all pass before any is saved: of N at once, at most the limit go on.
+   * Returns the row's id; `pass()` deletes it when the check succeeds. 429 once an account or address is used up.
+   */
+  private async attempt(email: string, address: string) {
     const since = new Date(Date.now() - WINDOW_MS);
     await this.db.loginFailure.deleteMany({ where: { at: { lt: since } } }); // the window only needs the last 15 minutes
+    const { id } = await this.db.loginFailure.create({ data: { email: email.slice(0, 200), address }, select: { id: true } });
     const [byEmail, byAddress] = await Promise.all([
-      this.db.loginFailure.count({ where: { email, at: { gte: since } } }),
+      this.db.loginFailure.count({ where: { email: email.slice(0, 200), at: { gte: since } } }),
       this.db.loginFailure.count({ where: { address, at: { gte: since } } }),
     ]);
-    if (byEmail >= MAX_PER_EMAIL || byAddress >= MAX_PER_ADDRESS) {
+    if (byEmail > MAX_PER_EMAIL || byAddress > MAX_PER_ADDRESS) {
+      await this.pass(id); // a refused try isn't a guess
       throw new HttpException("Too many tries. Wait 15 minutes, or ask a teammate to run set-password for you.", HttpStatus.TOO_MANY_REQUESTS);
     }
+    return id;
   }
 
-  private fail(email: string, address: string) {
-    return this.db.loginFailure.create({ data: { email: email.slice(0, 200), address } });
+  /** The check behind `attempt(id)` succeeded: it wasn't a failure after all. */
+  private pass(id: string) {
+    return this.db.loginFailure.deleteMany({ where: { id } });
   }
 
   /**
@@ -50,7 +58,7 @@ export class AuthController {
    */
   async login(@Body(new ZodPipe(LoginInput)) body: LoginInput, @Headers("x-client-address") clientAddress?: string): Promise<SessionDto> {
     const address = (clientAddress ?? "").slice(0, 64) || "unknown";
-    await this.guard(body.email, address);
+    const attempt = await this.attempt(body.email, address);
     const member = body.email
       ? await this.db.member.findUnique({
           where: { email: body.email },
@@ -59,21 +67,20 @@ export class AuthController {
       : null;
     // Always one scrypt run, so the answer time doesn't tell which emails have accounts.
     const ok = await verifyPassword(body.password, member?.secret?.passwordHash);
-    if (!member || !ok) {
-      await this.fail(body.email, address);
-      throw new UnauthorizedException(WRONG);
-    }
+    if (!member || !ok) throw new UnauthorizedException(WRONG); // the attempt stays as a failure
     const totpSecret = member.secret?.totpSecret;
     if (totpSecret) {
       // The right password alone isn't a failed try: ask for the code.
-      if (!body.code) throw new UnauthorizedException({ statusCode: 401, message: "Enter the 6-digit code from your authenticator app", code: "two_step" });
+      if (!body.code) {
+        await this.pass(attempt);
+        throw new UnauthorizedException({ statusCode: 401, message: "Enter the 6-digit code from your authenticator app", code: "two_step" });
+      }
       const step = totpStep(totpSecret, body.code);
       if (step === null || !(await this.spend(member.id, step))) {
-        await this.fail(body.email, address);
         throw new UnauthorizedException({ statusCode: 401, message: "That code didn't match; enter the newest one", code: "two_step" });
       }
     }
-    await this.db.loginFailure.deleteMany({ where: { email: body.email } });
+    await this.db.loginFailure.deleteMany({ where: { email: body.email.slice(0, 200) } }); // this attempt and earlier ones
 
     const token = newToken();
     const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
@@ -85,18 +92,14 @@ export class AuthController {
   /**
    * Checks the signed-in member's own password before a change to their sign-in. Counts toward the same lockout as
    * signing in, so a borrowed session can't guess the password. 403, not 401: the session itself is fine.
+   * The attempt stays recorded until the caller calls `pass(attempt)`, so a code checked after the password counts too.
    */
   private async confirmPassword(password: string) {
     const { memberId } = signedIn();
     const m = await this.db.member.findUniqueOrThrow({ where: { id: memberId }, select: { email: true, secret: true } });
-    const email = m.email ?? memberId;
-    const address = `member:${memberId}`;
-    await this.guard(email, address);
-    if (!(await verifyPassword(password, m.secret?.passwordHash))) {
-      await this.fail(email, address);
-      throw new ForbiddenException("Your current password is wrong");
-    }
-    return { memberId, email, address, secret: m.secret };
+    const attempt = await this.attempt(m.email ?? memberId, `member:${memberId}`);
+    if (!(await verifyPassword(password, m.secret?.passwordHash))) throw new ForbiddenException("Your current password is wrong");
+    return { memberId, attempt, secret: m.secret };
   }
 
   @Post("logout")
@@ -118,7 +121,8 @@ export class AuthController {
   @Post("password")
   @HttpCode(204)
   async password(@Body(new ZodPipe(PasswordInput)) body: PasswordInput) {
-    const { memberId } = await this.confirmPassword(body.current);
+    const { memberId, attempt } = await this.confirmPassword(body.current);
+    await this.pass(attempt);
     const passwordHash = await hashPassword(body.next);
     await this.db.$transaction([
       this.db.memberSecret.upsert({ where: { memberId }, create: { memberId, passwordHash }, update: { passwordHash } }),
@@ -135,12 +139,17 @@ export class AuthController {
     return { secret, uri: `otpauth://totp/${label}?secret=${secret}&issuer=HackOps` };
   }
 
-  /** Turn two-step sign-in on. Signs out your other sessions, which signed in without a code. */
+  /**
+   * Turn two-step sign-in on. Signs out your other sessions, which signed in without a code.
+   * Only when it's off: replacing an active key would skip the current code that turning it off asks for.
+   */
   @Post("two-step")
   @HttpCode(204)
   async twoStepOn(@Body(new ZodPipe(TwoStepInput)) body: TwoStepInput) {
     if (!body.secret) throw new BadRequestException("Start again: the key is missing");
-    const { memberId } = await this.confirmPassword(body.password);
+    const { memberId, attempt, secret } = await this.confirmPassword(body.password);
+    await this.pass(attempt);
+    if (secret?.totpSecret) throw new ConflictException("Two-step sign-in is already on. Turn it off first to use a new key.");
     const step = totpStep(body.secret, body.code);
     if (step === null) throw new BadRequestException("That code didn't match; check the app's clock and enter the newest code");
     await this.db.$transaction([
@@ -153,13 +162,12 @@ export class AuthController {
   @Post("two-step/off")
   @HttpCode(204)
   async twoStepOff(@Body(new ZodPipe(TwoStepInput)) body: TwoStepInput) {
-    const { memberId, email, address, secret } = await this.confirmPassword(body.password);
-    if (!secret?.totpSecret) return;
+    const { memberId, attempt, secret } = await this.confirmPassword(body.password);
+    if (!secret?.totpSecret) return void (await this.pass(attempt));
     const step = totpStep(secret.totpSecret, body.code);
-    if (step === null || !(await this.spend(memberId, step))) {
-      await this.fail(email, address);
-      throw new ForbiddenException("That code didn't match; enter the newest one");
-    }
+    // A wrong code leaves the attempt recorded as a failure.
+    if (step === null || !(await this.spend(memberId, step))) throw new ForbiddenException("That code didn't match; enter the newest one");
+    await this.pass(attempt);
     await this.db.memberSecret.update({ where: { memberId }, data: { totpSecret: null, totpLastStep: null } });
   }
 

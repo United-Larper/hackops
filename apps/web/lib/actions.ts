@@ -173,9 +173,19 @@ export async function recheck() {
   refresh();
 }
 
-/** Only a path inside this app: `/board`, never `//evil.example` or a full URL. */
-const safeNext = (next: unknown) =>
-  typeof next === "string" && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/board";
+/**
+ * Only a path inside this app: `/board`, never `//evil.example` or a full URL. Parsed the way the browser will parse
+ * it, so tabs, newlines and backslashes (`/\t/evil.example`) can't turn it into another site.
+ */
+const safeNext = (next: unknown) => {
+  if (typeof next !== "string") return "/board";
+  try {
+    const u = new URL(next, "http://x");
+    return u.origin === "http://x" ? u.pathname + u.search : "/board";
+  } catch {
+    return "/board";
+  }
+};
 
 export type LoginState = MoveResult & { needCode?: boolean };
 

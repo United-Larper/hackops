@@ -93,6 +93,15 @@ describe("POST /auth/login", () => {
     await again.close();
   });
 
+  it("counts sign-ins that arrive at once, so they can't all slip past the lockout", async () => {
+    const answers = await Promise.all(Array.from({ length: 10 }, (_, i) => login(TESTER_EMAIL, "wrong password", `198.51.100.${i}`)));
+    expect(answers.map((a) => a.status).filter((s) => s !== 401 && s !== 429)).toEqual([]);
+    // At most five passwords were checked; a refused try checks none.
+    const guesses = answers.filter((a) => a.status === 401).length;
+    expect(guesses).toBeLessThanOrEqual(5);
+    expect(await db.loginFailure.count({ where: { email: TESTER_EMAIL } })).toBe(guesses);
+  });
+
   it("locks an address that tries many emails", async () => {
     // 29 recorded failures (each real one costs a scrypt run), then the 30th through the API.
     await db.loginFailure.createMany({ data: Array.from({ length: 29 }, (_, i) => ({ email: `guess${i}@example.com`, address: "192.0.2.50" })) });
@@ -117,6 +126,9 @@ describe("two-step sign-in", () => {
     await http().post("/auth/two-step").send({ password: TESTER_PASSWORD, secret, code: "000000" === totp(secret, step()) ? "111111" : "000000" }).expect(400);
     await http().post("/auth/two-step").send({ password: TESTER_PASSWORD, secret, code: totp(secret, step()) }).expect(204);
     expect((await http().get("/auth/me").expect(200)).body.twoStep).toBe(true);
+    // a new key can't replace the active one without the current code
+    const other = ((await http().post("/auth/two-step/setup").expect(201)).body as { secret: string }).secret;
+    await http().post("/auth/two-step").send({ password: TESTER_PASSWORD, secret: other, code: totp(other, step()) }).expect(409);
 
     const ask = (await login(TESTER_EMAIL, TESTER_PASSWORD).expect(401)).body;
     expect(ask.code).toBe("two_step");
