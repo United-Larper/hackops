@@ -64,7 +64,7 @@ export class HackathonsController {
     const where: Prisma.HackathonWhereInput = {
       ...(q.stage && { stage: q.stage }),
       ...(q.category && { categories: { some: { slug: q.category } } }),
-      ...(q.q && { title: { contains: q.q } }),
+      ...(q.q && { title: { contains: q.q, mode: "insensitive" } }), // as on SQLite: Postgres compares case by default
       ...regionWhere(q.region),
     };
     const [rows, team] = await Promise.all([
