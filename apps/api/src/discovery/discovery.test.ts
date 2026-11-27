@@ -125,8 +125,7 @@ describe("refresh", () => {
     expect(await db.hackathon.count()).toBe(1);
   });
 
-  it("returns fit scores, sorts by fit and hides closed events", async () => {
-    await db.team.create({ data: { name: "Team", preferredCats: ["ai-ml"], homeCity: "Kuala Lumpur" } });
+  it("sorts by deadline and hides closed events", async () => {
     await discovery.refresh({
       devpost: async () => [
         item({ sourceId: "a", title: "AI Online", submissionDueAt: new Date(Date.now() + 10 * 86_400_000) }),
@@ -134,9 +133,8 @@ describe("refresh", () => {
         item({ sourceId: "c", title: "Old Hack", submissionDueAt: new Date(Date.now() - 86_400_000) }),
       ],
     });
-    const res = await http().get("/hackathons?stage=discovered&open=1&sort=fit").expect(200);
-    expect(res.body.map((h: { title: string }) => h.title)).toEqual(["AI Online", "Generic Hack"]);
-    expect(res.body[0].fit.reasons).toContain("Matches AI / ML");
+    const res = await http().get("/hackathons?stage=discovered&open=1&sort=deadline").expect(200);
+    expect(res.body.map((h: { title: string }) => h.title)).toEqual(["Generic Hack", "AI Online"]);
     const soon = await http().get("/hackathons?closesWithin=7").expect(200);
     expect(soon.body.map((h: { title: string }) => h.title)).toEqual(["Generic Hack"]);
   });

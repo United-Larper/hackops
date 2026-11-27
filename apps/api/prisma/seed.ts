@@ -1,6 +1,7 @@
 // Base data: the one member and the team row (categories are the CATEGORIES constant in @hackops/shared). The hackathons come from the
 // team's own list (pnpm --filter api import-list), not from here.
-// Safe to run repeatedly. It removes every other member, every project and any old demo hackathons.
+// Safe to run repeatedly. It removes members without an email, every project and any old demo hackathons. Members
+// added with add-member stay.
 import { pgAdapter } from "../src/db";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/auth";
@@ -16,7 +17,7 @@ async function main() {
   // Deleting a member drops their sessions, secret and assignments, and clears them as assignee.
   // Deleting a hackathon drops its tasks, assignments and activity.
   const emails = MEMBERS.map((m) => m.email);
-  await db.member.deleteMany({ where: { OR: [{ email: null }, { email: { notIn: emails } }] } });
+  await db.member.deleteMany({ where: { email: null } });
   await db.project.deleteMany();
   await db.hackathon.deleteMany({ where: { source: "demo" } });
   const ids: string[] = [];
@@ -28,7 +29,7 @@ async function main() {
     const passwordHash = await hashPassword(seedPassword);
     for (const memberId of ids) await db.memberSecret.upsert({ where: { memberId }, create: { memberId, passwordHash }, update: { passwordHash } });
   }
-  const team = { name: "Kopi & Commit", pitch: "Four friends from KL who ship in a weekend.", preferredCats: ["ai-ml", "fintech", "smart-city", "edtech"], homeCity: "Kuala Lumpur" };
+  const team = { name: "Kopi & Commit", pitch: "Four friends from KL who ship in a weekend." };
   await db.team.upsert({ where: { id: TEAM_ID }, create: team, update: team });
 
   const counts = { hackathons: await db.hackathon.count(), members: await db.member.count(), projects: await db.project.count(), tasks: await db.task.count() };

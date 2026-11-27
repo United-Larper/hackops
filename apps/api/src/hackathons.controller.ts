@@ -20,8 +20,9 @@ import {
 } from "@hackops/shared";
 import { ZodPipe } from "./common/zod.pipe";
 import type { Prisma } from "./generated/prisma/client";
-import { HACKATHON_INCLUDE, WORKSPACE_INCLUDE, fitTeam, toHackathonDto, toTaskDto, toWorkspaceDto, tracksOf } from "./mappers";
+import { HACKATHON_INCLUDE, WORKSPACE_INCLUDE, toHackathonDto, toTaskDto, toWorkspaceDto, tracksOf } from "./mappers";
 import { PrismaService } from "./prisma.service";
+import { currentSession } from "./auth";
 import { changeStage, logActivity } from "./stage";
 import { cachedWinners, fetchDevpostTracks, pastWinners } from "./intel/past-winners";
 import { SubmissionCheckService } from "./intel/submission-check";
@@ -63,10 +64,7 @@ export class HackathonsController {
       ...(q.q && { title: { contains: q.q, mode: "insensitive" } }), // as on SQLite: Postgres compares case by default
       ...regionWhere(q.region),
     };
-    const [rows, team] = await Promise.all([
-      this.db.hackathon.findMany({ where, include: HACKATHON_INCLUDE, orderBy: { createdAt: "desc" } }),
-      fitTeam(this.db),
-    ]);
+    const rows = await this.db.hackathon.findMany({ where, include: HACKATHON_INCLUDE, orderBy: { createdAt: "desc" } });
     const now = new Date();
     const next = (h: { registrationClosesAt: Date | null; submissionDueAt: Date | null }) => h.registrationClosesAt ?? h.submissionDueAt;
     // ponytail: deadline filters and sorting run in memory; fine for hundreds of rows, move to SQL past that.
@@ -76,8 +74,7 @@ export class HackathonsController {
       if (q.closesWithin && (!n || n <= now || n.getTime() - now.getTime() > q.closesWithin * 86_400_000)) return false;
       return true;
     });
-    const dtos = kept.map((h) => toHackathonDto(h, team, now));
-    if (q.sort === "fit") dtos.sort((a, b) => (b.fit?.score ?? 0) - (a.fit?.score ?? 0));
+    const dtos = kept.map((h) => toHackathonDto(h));
     if (q.sort === "deadline") {
       const t = (d: (typeof dtos)[number]) => new Date(d.registrationClosesAt ?? d.submissionDueAt ?? "9999-12-31").getTime();
       dtos.sort((a, b) => t(a) - t(b));
@@ -96,19 +93,16 @@ export class HackathonsController {
       // Region and mode both constrain mode, so they combine with AND.
       ...(q.mode && { AND: [{ mode: { in: [q.mode, "hybrid"] } }] }),
     };
-    const [rows, team] = await Promise.all([
-      this.db.hackathon.findMany({
-        where,
-        include: { ...HACKATHON_INCLUDE, tasks: { select: { status: true } } },
-        orderBy: { updatedAt: "desc" },
-      }),
-      fitTeam(this.db),
-    ]);
+    const rows = await this.db.hackathon.findMany({
+      where,
+      include: { ...HACKATHON_INCLUDE, tasks: { select: { status: true } } },
+      orderBy: { updatedAt: "desc" },
+    });
     const now = new Date();
     const week = now.getTime() + 7 * 86_400_000;
     const board = Object.fromEntries(stages.map((s) => [s, []])) as unknown as BoardDto;
     for (const { tasks, ...h } of rows) {
-      const card = { ...toHackathonDto(h, team, now), progress: progressOf(tasks), nextDeadline: nextDeadline({ ...h, stage: h.stage as never }, now) };
+      const card = { ...toHackathonDto(h), progress: progressOf(tasks), nextDeadline: nextDeadline({ ...h, stage: h.stage as never }, now) };
       if (q.week && (!card.nextDeadline || new Date(card.nextDeadline.at).getTime() > week)) continue;
       board[card.stage as keyof BoardDto]!.push(card);
     }
@@ -167,8 +161,8 @@ export class HackathonsController {
 
   @Get(":id")
   async get(@Param("id") id: string) {
-    const [row, team] = await Promise.all([this.db.hackathon.findUniqueOrThrow({ where: { id }, include: WORKSPACE_INCLUDE }), fitTeam(this.db)]);
-    return toWorkspaceDto(row, team);
+    const row = await this.db.hackathon.findUniqueOrThrow({ where: { id }, include: WORKSPACE_INCLUDE });
+    return toWorkspaceDto(row);
   }
 
   @Patch(":id")
@@ -220,13 +214,17 @@ export class HackathonsController {
 
   @Put(":id/team")
   async setTeam(@Param("id") id: string, @Body(new ZodPipe(TeamAssignmentsInput)) body: TeamAssignmentsInput) {
+    // Whoever saves the lineup is accountable for it, so they have to be in it.
+    const me = currentSession()?.memberId;
+    if (body.length && !body.some((a) => a.memberId === me)) throw new BadRequestException("Add yourself to the team: whoever saves it is accountable.");
+    const team = body.map((a) => ({ ...a, accountable: a.memberId === me }));
     await this.db.$transaction(async (tx) => {
       await tx.hackathon.findUniqueOrThrow({ where: { id } });
       await tx.assignment.deleteMany({ where: { hackathonId: id } });
-      await tx.assignment.createMany({ data: body.map((a) => ({ ...a, hackathonId: id })) });
-      const members = await tx.member.findMany({ where: { id: { in: body.map((a) => a.memberId) } } });
+      await tx.assignment.createMany({ data: team.map((a) => ({ ...a, hackathonId: id })) });
+      const members = await tx.member.findMany({ where: { id: { in: team.map((a) => a.memberId) } } });
       const name = (mid: string) => members.find((m) => m.id === mid)?.name ?? "Unknown";
-      const summary = body.map((a) => `${name(a.memberId)} (${a.role}${a.accountable ? ", accountable" : ""})`).join(", ");
+      const summary = team.map((a) => `${name(a.memberId)} (${a.role}${a.accountable ? ", accountable" : ""})`).join(", ");
       await logActivity(tx, id, body.length ? `Team set: ${summary}` : "Team cleared");
     });
     return this.get(id);
