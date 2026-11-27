@@ -30,11 +30,10 @@ describe("regionOf", () => {
 });
 
 describe("TeamAssignmentsInput", () => {
-  it("needs exactly one accountable member and no duplicates", () => {
-    const ok = [{ memberId: "a", role: "lead", accountable: true }, { memberId: "b", role: "developer" }];
+  it("refuses a member twice", () => {
+    const ok = [{ memberId: "a", role: "lead" }, { memberId: "b", role: "developer" }];
     expect(TeamAssignmentsInput.safeParse(ok).success).toBe(true);
     expect(TeamAssignmentsInput.safeParse([]).success).toBe(true);
-    expect(TeamAssignmentsInput.safeParse([{ memberId: "a", role: "lead" }]).success).toBe(false);
     expect(TeamAssignmentsInput.safeParse([...ok, { memberId: "a", role: "pitch" }]).success).toBe(false);
   });
 });

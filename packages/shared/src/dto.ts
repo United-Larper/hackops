@@ -1,7 +1,6 @@
 import type { HackathonResult, Mode, Region, Role, Source, TaskStatus } from "./enums";
 import type { Phase, Stage } from "./lifecycle";
 import type { PrizeTrack } from "./schemas";
-import type { Fit } from "./fit";
 import type { TrackFit } from "./tracks";
 import type { WinnersBrief } from "./winners";
 
@@ -41,8 +40,6 @@ export type HackathonDto = {
   owner: MemberRefDto | null;
   projectId: string | null;
   categories: CategoryDto[];
-  /** Computed on read against the current team profile; null when no team profile exists. */
-  fit: Fit | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -136,7 +133,7 @@ export type PortfolioDto = {
 };
 
 /** GET /team. */
-export type TeamDto = { name: string; pitch: string | null; preferredCats: string[]; homeCity: string };
+export type TeamDto = { name: string; pitch: string | null };
 
 /**
  * GET /signup-profile?token=: what the bookmarklet may fill, and nothing else. Open to any origin, so it needs the token,
