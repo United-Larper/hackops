@@ -19,6 +19,7 @@ HackOps is the team's hackathon manager. It finds hackathons, runs each one as a
 | [phases/11-later.md](phases/11-later.md) | **Later, don't start.** AI hook, chat reminders, hosting |
 | [phases/12-security-and-login.md](phases/12-security-and-login.md) | Per-member sign-in, the API locked to signed-in members, per-member bookmarklet tokens, safer outbound fetches, a script CSP and a hosting guide, CI |
 | [phases/13-render-and-neon.md](phases/13-render-and-neon.md) | Postgres on Neon instead of SQLite, one free Render service running both apps |
+| [phases/15-schema-cleanup.md](phases/15-schema-cleanup.md) | Bloat audit: owner from the assignment, categories as a constant, lists as Postgres arrays, a result check |
 
 ## How to use the phases
 
@@ -134,3 +135,10 @@ Concretely:
 ### 13 Render and Neon
 - [x] 13.1 Postgres on Neon (tests in a `test` schema of dev, CI on a Postgres container)
 - [x] 13.2 One Render service for both apps (`render.yaml`, `scripts/start-hosted.mjs`)
+
+### 15 Schema cleanup
+- [ ] 15.1 Migration (categories carried over, lists to arrays, result check)
+- [ ] 15.2 Shared
+- [ ] 15.3 API (with tests)
+- [ ] 15.4 Web
+- [ ] 15.5 Docs and prod
