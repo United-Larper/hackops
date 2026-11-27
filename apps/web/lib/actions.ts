@@ -16,10 +16,7 @@ export async function moveCard(id: string, stage: Stage, opts: { result?: Hackat
   const path = `/hackathons/${encodeURIComponent(id)}`;
   const note = opts.note?.trim() || undefined;
   try {
-    // Note first: if the move then fails, nothing has moved and the error is accurate.
-    if (note && (stage === "registered" || stage === "skipped")) {
-      await api(path, { method: "PATCH", body: JSON.stringify({ decisionNote: note }) });
-    }
+    // On a move to Registered or Skipped the API also keeps the note as the decision note, in the same transaction.
     await api(`${path}/stage`, { method: "POST", body: JSON.stringify({ stage, result: opts.result, note }) });
   } catch (e) {
     unstable_rethrow(e); // let the sign-in redirect through
@@ -65,13 +62,9 @@ export async function deleteTask(id: string, taskId: string) {
 
 export type Assignment = { memberId: string; role: "lead" | "developer" | "designer" | "pitch"; accountable: boolean };
 
-/** Replace the hackathon's team; the accountable person becomes its owner (shown on the board and the header). */
+/** Replace the hackathon's team; the accountable person is its owner (shown on the board and the header). */
 export async function saveTeam(id: string, team: Assignment[]) {
-  const owner = team.find((a) => a.accountable)?.memberId ?? null;
-  return write(async () => {
-    await api(`${hack(id)}/team`, { method: "PUT", body: JSON.stringify(team) });
-    await api(hack(id), { method: "PATCH", body: JSON.stringify({ ownerId: owner }) });
-  }, "The team didn't save.");
+  return write(() => api(`${hack(id)}/team`, { method: "PUT", body: JSON.stringify(team) }), "The team didn't save.");
 }
 
 /** The note is written as the signed-in member. */
