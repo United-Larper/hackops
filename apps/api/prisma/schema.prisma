@@ -1,5 +1,5 @@
 // HackOps data model. Spec: docs/spec.md §6; design notes: docs/phases/02-core-data-and-api.md.
-// SQLite has no enums or list columns: enum-like fields are strings checked by Zod in @hackops/shared,
+// Postgres on Neon. Enum-like fields are strings checked by Zod in @hackops/shared (kept from the SQLite days: no enum migrations),
 // and lists are JSON strings parsed at the API boundary.
 
 generator client {
@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Hackathon {

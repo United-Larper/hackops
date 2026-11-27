@@ -1,7 +1,7 @@
 // Sets a random temporary password for one member and prints it once: the first-run and "forgot password" path,
 // since HackOps sends no email. Signs that member out everywhere, turns off two-step sign-in (a lost phone) and lifts any sign-in lockout on their email. Usage: pnpm --filter api set-password <email>
 import { randomBytes } from "node:crypto";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { pgAdapter } from "../src/db";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/auth";
 
@@ -11,7 +11,7 @@ if (!email) {
   process.exit(1);
 }
 
-const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }) });
+const db = new PrismaClient({ adapter: pgAdapter() });
 
 async function main() {
   const member = await db.member.findUnique({ where: { email: email! }, select: { id: true, name: true } });

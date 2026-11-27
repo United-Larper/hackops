@@ -6,12 +6,12 @@ The team's hackathon manager. It finds hackathons in Malaysia and overseas, runs
 
 ## Run it
 
-Needs Node 24 and pnpm 10 (`corepack enable` gives you the pinned pnpm).
+Needs Node 24 and pnpm 10 (`corepack enable` gives you the pinned pnpm), and a Postgres database: a free [Neon](https://neon.tech) project. Give it two branches: `prod` (the hosted app) and `dev` (your machine). Copy `apps/api/.env.example` to `apps/api/.env` and fill in the `dev` branch's pooled and direct URLs (Neon → Connect). The tests run in a separate `test` schema of `dev`, which every run wipes; your dev data in `public` stays.
 
 ```bash
 pnpm install
 pnpm --filter @hackops/shared build
-pnpm --filter api exec prisma migrate deploy
+pnpm --filter api db:deploy
 SEED_PASSWORD=choose-a-demo-password pnpm --filter api db:seed
 pnpm dev
 ```
@@ -40,11 +40,22 @@ Only the web app faces the internet. The API keeps listening on `127.0.0.1` on t
 3. Set `SITE_URL=https://hackops.example.com` in `apps/web/.env`. That makes the session cookie `secure`, adds HSTS and `upgrade-insecure-requests`, and puts the public address in the bookmarklet and calendar links.
 4. Leave `HOST` unset in `apps/api/.env`, and don't open port 4000. The API trusts the address the web app passes on, so nothing else may reach it.
 
+### Hosting on Render (free)
+
+One free Render web service runs both apps: `scripts/start-hosted.mjs` applies migrations, starts the API on `127.0.0.1:4000` inside the service and the web app on Render's port. The API is never public, so everything above still holds. The database is the Neon `prod` branch.
+
+1. Neon: create the project in the region closest to the service (Singapore, `ap-southeast-1`, matches `render.yaml`). Copy the `prod` branch's pooled URL (host has `-pooler`) and direct URL.
+2. Render → New → Blueprint → this repository. It reads `render.yaml` and asks for `DATABASE_URL` (pooled), `DATABASE_URL_UNPOOLED` (direct) and `SITE_URL`. Render shows the address (`https://hackops-xxxx.onrender.com`) only once the service exists: put in a guess, then fix `SITE_URL` under Environment and redeploy, since the web build reads it.
+3. First member: from your machine, with `apps/api/.env` temporarily pointing at the `prod` branch URLs, run `pnpm --filter api set-password <email>` for a member you added, or `SEED_PASSWORD=… pnpm --filter api db:seed` for the demo team. Point `.env` back at `dev` afterwards.
+4. Sign-in limit per address: Render's proxy adds its own address to `X-Forwarded-For`, so by default every browser may share one limit (safe, but one attacker can lock everyone out of sign-in for 15 minutes). Check which header holds your own address, then set `CLIENT_ADDRESS_HEADER` to it (likely `true-client-ip`) and redeploy. Only use a header Render sets and overwrites itself, never one a browser can send.
+
+Limits of the free plan: the service sleeps after 15 minutes without visits (the next visit takes about a minute to wake it), and the daily discovery refresh and hourly submission check only run while it's awake. A paid instance, or a cron service calling it, removes that.
+
 ## Layout
 
 | Path | What |
 |---|---|
 | `apps/web` | Next.js 16 app: every screen |
-| `apps/api` | NestJS 11 API with Prisma 7 on SQLite |
+| `apps/api` | NestJS 11 API with Prisma 7 on Postgres (Neon) |
 | `packages/shared` | `@hackops/shared`: schemas, enums and pure functions used by both |
 | `docs/` | spec, phases (design + implementation), progress |
