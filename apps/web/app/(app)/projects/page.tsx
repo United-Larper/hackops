@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ProjectSummaryDto } from "@hackops/shared";
@@ -14,6 +15,7 @@ export default async function ProjectsPage() {
   try {
     projects = await api<ProjectSummaryDto[]>("/projects");
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     error = e instanceof ApiError ? e.message : "Couldn't load the projects.";
   }
 

@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { PortfolioQuery, ROLES, type HackathonResult, type Mode, type PortfolioDto, type PortfolioEntryDto, type Role } from "@hackops/shared";
-import { newest, toProjectDto } from "./mappers";
+import { list, newest } from "./mappers";
 import { PrismaService } from "./prisma.service";
 import { ZodPipe } from "./common/zod.pipe";
 
@@ -24,7 +24,10 @@ export class PortfolioController {
     rows.sort((a, b) => newest(b) - newest(a));
 
     const entries = rows.map((h): PortfolioEntryDto => {
-      const project = h.project ? (({ id: _, ...p }) => p)(toProjectDto(h.project)) : null;
+      const p = h.project;
+      const project = p
+        ? { name: p.name, description: p.description, tech: list(p.tech), repoUrl: p.repoUrl, demoUrl: p.demoUrl, videoUrl: p.videoUrl, slidesUrl: p.slidesUrl, devpostUrl: p.devpostUrl }
+        : null;
       return {
         id: h.id,
         title: h.title,

@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { refresh } from "next/cache";
 import { api, ApiError } from "@/lib/api";
 
@@ -18,6 +19,7 @@ export async function refreshDiscovery(_prev: RefreshState): Promise<RefreshStat
     const head = added === 0 ? "Nothing new" : `${added} new hackathon${added === 1 ? "" : "s"}`;
     return { message: failed.length ? `${head}. Couldn't reach ${failed.join(", ")}.` : `${head}.`, failed: failed.length > 0 };
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     return { message: e instanceof ApiError ? e.message : "Refresh failed", failed: true };
   }
 }

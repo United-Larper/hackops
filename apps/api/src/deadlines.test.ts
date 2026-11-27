@@ -4,15 +4,17 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "./app.module";
 import { PrismaService } from "./prisma.service";
+import { signedIn, TESTER } from "../test/auth";
 
 let app: INestApplication;
 let db: PrismaService;
-const http = () => request(app.getHttpServer());
+let http: Awaited<ReturnType<typeof signedIn>>["http"];
 
 beforeAll(async () => {
   const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
   app = await mod.createNestApplication().init();
   db = app.get(PrismaService);
+  http = (await signedIn(app, db)).http;
   await db.task.deleteMany();
   await db.hackathon.deleteMany();
 });
@@ -40,7 +42,10 @@ describe("GET /deadlines", () => {
     const h = await db.hackathon.create({ data: { source: "manual", title: "Done Hack", url: "https://example.com", mode: "online", stage: "submitted", judgingAt: lastWeek } });
     await db.hackathon.create({ data: { source: "manual", title: "Scraped", url: "https://example.com/2", mode: "online", stage: "discovered", submissionDueAt: lastWeek } });
 
-    const res = await http().get("/calendar.ics").expect(200);
+    await request(app.getHttpServer()).get("/calendar.ics").expect(404); // public, so it needs a member's token
+    await request(app.getHttpServer()).get("/calendar.ics?token=not-a-real-token-at-all").expect(404);
+    const { fillToken } = (await http().post("/auth/fill-token").expect(201)).body as { fillToken: string };
+    const res = await request(app.getHttpServer()).get(`/calendar.ics?token=${fillToken}`).expect(200);
     expect(res.headers["content-type"]).toMatch(/^text\/calendar/);
     expect(res.text).toContain(`UID:${h.id}:judging@hackops`);
     expect(res.text).not.toContain("Scraped");

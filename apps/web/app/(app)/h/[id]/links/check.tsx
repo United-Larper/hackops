@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { ReactNode } from "react";
 import type { CheckItem, SubmissionCheckDto } from "@hackops/shared";
 import { Icon } from "@/components/icon";
@@ -47,6 +48,7 @@ export async function SubmissionCheck({ id }: { id: string }) {
   try {
     c = await api<SubmissionCheckDto>(`/hackathons/${encodeURIComponent(id)}/check`);
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     return (
       <Panel>
         <p className="px-4 py-4 text-[15px] text-muted sm:px-5">{e instanceof ApiError ? e.message : "The check didn't run."}</p>

@@ -135,14 +135,26 @@ export type PortfolioDto = {
   categories: CategoryDto[];
 };
 
-/** GET /team. `fillToken` is the sign-up bookmarklet's secret: null until one is made with POST /team/fill-token. */
-export type TeamDto = { name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string; fillToken: string | null };
+/** GET /team. */
+export type TeamDto = { name: string; pitch: string | null; preferredTech: string[]; preferredCats: string[]; homeCity: string };
 
-/** GET /signup-profile: what the bookmarklet may fill, and nothing else. Open to any origin, so it needs the token. */
+/**
+ * GET /signup-profile?token=: what the bookmarklet may fill, and nothing else. Open to any origin, so it needs the token,
+ * and a token only ever returns its owner's own fields.
+ */
 export type SignupProfileDto = {
   team: { name: string; pitch: string | null };
-  members: { id: string; name: string; email: string | null; githubUrl: string | null; linkedinUrl: string | null; organisation: string | null; tshirtSize: string | null; dietary: string | null }[];
+  member: { name: string; email: string | null; githubUrl: string | null; linkedinUrl: string | null; organisation: string | null; tshirtSize: string | null; dietary: string | null };
 };
+
+/** POST /auth/login. The token goes in the web app's httpOnly cookie; the API keeps only its hash. */
+export type SessionDto = { token: string; expiresAt: string; member: MemberRefDto };
+
+/** GET /auth/me: who is signed in, plus their own bookmarklet and calendar secret (null until made). */
+export type MeDto = MemberRefDto & { fillToken: string | null; twoStep: boolean };
+
+/** POST /auth/two-step/setup: a fresh key, not saved until a code from it turns two-step on. */
+export type TwoStepSetupDto = { secret: string; uri: string };
 
 /** GET /hackathons/:id/winners. `brief` is null for events without past Devpost data (not Devpost, no organizer, no past editions). */
 export type WinnersDto = { organizer: string | null; brief: WinnersBrief | null };

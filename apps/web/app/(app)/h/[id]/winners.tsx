@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { ReactNode } from "react";
 import type { WinnersDto } from "@hackops/shared";
 import { api, ApiError } from "@/lib/api";
@@ -25,6 +26,7 @@ export async function Winners({ id }: { id: string }) {
   try {
     w = await api<WinnersDto>(`/hackathons/${encodeURIComponent(id)}/winners`);
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     return (
       <Panel>
         <p className="mt-2 text-[15px] text-muted">{e instanceof ApiError ? e.message : "Couldn't load past winners."} Reload the page to try again.</p>

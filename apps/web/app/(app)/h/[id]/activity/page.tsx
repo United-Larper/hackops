@@ -1,17 +1,15 @@
-import type { MemberDto } from "@hackops/shared";
-import { api } from "@/lib/api";
 import { clockTime, shortDate } from "@/lib/time";
 import { getWorkspace, initials } from "@/lib/workspace";
 import { NoteForm } from "./note-form";
 
 export default async function ActivityTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [h, members] = await Promise.all([getWorkspace(id), api<MemberDto[]>("/members")]);
+  const h = await getWorkspace(id);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)] lg:items-start">
       <div className="lg:col-start-2 lg:row-start-1">
-        <NoteForm hackathonId={h.id} members={members} />
+        <NoteForm hackathonId={h.id} />
       </div>
       <section aria-labelledby="feed-h" className="lg:col-start-1 lg:row-start-1">
         <h2 id="feed-h" className="sr-only">Activity, newest first</h2>
@@ -37,7 +35,10 @@ export default async function ActivityTab({ params }: { params: Promise<{ id: st
                   <span className="font-display font-bold text-muted tabular-nums">
                     {shortDate(a.createdAt).split(" ").slice(1).join(" ")} {clockTime(a.createdAt)}
                   </span>
-                  <span>{a.text}</span>
+                  <span>
+                    {a.text}
+                    {a.member && <span className="text-muted"> · {a.member.name}</span>}
+                  </span>
                 </li>
               ),
             )}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { BOARD_STAGES, type BoardDto, type ProjectDetailDto } from "@hackops/shared";
 import { PageHeader } from "@/components/shell/page-header";
@@ -13,6 +13,7 @@ const getProject = cache(async (id: string) => {
   try {
     return await api<ProjectDetailDto>(`/projects/${encodeURIComponent(id)}`);
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     if (e instanceof ApiError && e.status === 404) notFound();
     throw e;
   }

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { MemberRefDto } from "@hackops/shared";
+import { logout } from "@/lib/actions";
 import { FormGuide, type Result } from "../form-guide";
 import { Icon } from "../icon";
 import { NAV } from "./nav";
@@ -24,7 +26,7 @@ function useActive() {
 }
 
 /** Desktop navigation: the ink rail with the team's form guide at its foot. */
-export function Rail({ form }: { form: Result[] }) {
+export function Rail({ form, me }: { form: Result[]; me: MemberRefDto | null }) {
   const active = useActive();
   return (
     <nav aria-label="Main" className="rail sticky top-0 hidden h-dvh w-[220px] flex-col gap-1 border-r border-rail-line bg-rail px-4 py-6 text-rail-text md:flex">
@@ -51,6 +53,14 @@ export function Rail({ form }: { form: Result[] }) {
         <p className="mb-2 text-xs font-medium tracking-[0.04em] text-rail-muted">Team form, last 5</p>
         <FormGuide results={form} />
       </div>
+      {me && (
+        <form action={logout} className="mt-4 flex items-center gap-2 border-t border-rail-line px-2.5 pt-4">
+          <Link href={`/team/${me.id}`} className="min-w-0 flex-1 truncate text-sm font-medium hover:text-rail-strong" title="Your page: details and password">
+            {me.name}
+          </Link>
+          <button className="shrink-0 rounded-md px-2 py-1.5 text-[13px] font-semibold text-rail-muted hover:bg-rail-2 hover:text-rail-strong">Sign out</button>
+        </form>
+      )}
     </nav>
   );
 }

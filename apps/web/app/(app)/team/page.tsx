@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { MemberDto, TeamWorkloadDto, WorkloadRow } from "@hackops/shared";
@@ -17,6 +18,7 @@ export default async function TeamPage() {
   try {
     [members, work] = await Promise.all([api<MemberDto[]>("/members"), api<TeamWorkloadDto>("/team/workload")]);
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     error = e instanceof ApiError ? e.message : "Couldn't load the team.";
   }
   const rows = new Map(work.members.map((r) => [r.member.id, r]));

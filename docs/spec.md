@@ -15,7 +15,7 @@ The team wants to enter **more hackathons**, to gain experience, build a portfol
 3. **Turn every entry into portfolio material:** each submission becomes a public record the team can link from CVs and LinkedIn.
 4. **Get better at winning:** pick events where the team fits, and learn from each result.
 
-This is a **demo**. One shared team, no logins, running locally.
+This is a **demo**. One shared team, running locally. Each member signs in with their own email and password (phase 12); the portfolio stays public.
 
 ## 2. Goals, non-goals, anti-goals
 
@@ -29,9 +29,10 @@ This is a **demo**. One shared team, no logins, running locally.
 - Deadline reminders: a due-soon panel and a calendar feed.
 - Sign-up assist: a team profile plus a bookmarklet that fills registration forms.
 - Win intelligence: a "what wins here" brief from past winners, a prize-track finder and a pre-submission check.
+- Per-member sign-in (phase 12): email and password, no roles. Every change is recorded under who made it.
 
 **Non-goals (for the demo)**
-- User accounts, permissions, multiple teams.
+- Roles and permissions, multiple teams, password reset by email (a teammate runs `set-password` instead).
 - Chat bots (Telegram, Discord, WhatsApp) and email reminders.
 - AI features. One optional hook is left for later (phase 11).
 - Hosting. Everything runs on the developer's machine.
@@ -107,6 +108,8 @@ Full Prisma schema in [phases/02-core-data-and-api.md](phases/02-core-data-and-a
 - **Project**: name, description, tech, repo, demo, video, slides and Devpost links. Linked to many hackathons.
 - **Activity**: a hackathon's feed: automatic change entries and manual notes.
 - **Team**: one row: team name, pitch blurb, preferred tech, home city. Feeds the fit score and the sign-up assist.
+- **MemberSecret**: one per member, kept apart from Member so a Member row can never leak it: scrypt password hash, the two-step sign-in key and the last code step used, and the member's own bookmarklet and calendar-feed token.
+- **Session**: a signed-in browser. Only the SHA-256 of the token is stored; the token lives in an httpOnly cookie. 14 days.
 
 ## 7. Fit score
 

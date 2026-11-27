@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { DEADLINE_LABEL, type GroupedDueItem } from "@hackops/shared";
+import { unstable_rethrow } from "next/navigation";
 import { api } from "@/lib/api";
 import { Fixtures, type Fixture } from "./fixtures";
 
@@ -32,6 +33,7 @@ const toFixture = (d: GroupedDueItem): Fixture => ({
 /** The next 7 days' deadlines. If the API is down the panel says so instead of failing the page. */
 async function DueSoon() {
   const items = await api<GroupedDueItem[]>("/deadlines?days=7").catch((e: unknown) => {
+    unstable_rethrow(e); // let the sign-in redirect through
     console.error("Due-soon panel:", e);
     return null;
   });

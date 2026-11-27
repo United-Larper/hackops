@@ -2,12 +2,18 @@ import { readFileSync } from "node:fs";
 import { Test } from "@nestjs/testing";
 import type { INestApplication } from "@nestjs/common";
 import { TASK_TEMPLATE } from "@hackops/shared";
-import request from "supertest";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma.service";
+import { signedIn, TESTER } from "../../test/auth";
 import { isDevpost, parseGallery, parsePrizes, parseProject } from "./past-winners";
-import { checkSubmission } from "./submission-check";
+import { get } from "../discovery/http";
+import { checkSubmission, guardedLookup, pointsInward } from "./submission-check";
+
+// No real DNS in tests: "intranet.test" lives on a private address, every other host on a public one.
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn(async (host: string) => [{ address: host === "intranet.test" ? "10.1.2.3" : "93.184.216.34", family: 4 }]),
+}));
 
 const fixture = (name: string) => readFileSync(`test/fixtures/${name}`, "utf8");
 
@@ -24,6 +30,18 @@ const answer = (routes: Record<string, () => Response>) =>
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Devpost past winners and prizes", () => {
+  it("won't follow a redirect off the source's site", async () => {
+    const redirected = (to: string) => {
+      const res = new Response("{}");
+      Object.defineProperty(res, "url", { value: to });
+      return res;
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => redirected("https://evil.example/")));
+    await expect(get("https://devpost.com/api/hackathons")).rejects.toThrow(/redirected off its site/);
+    vi.stubGlobal("fetch", vi.fn(async () => redirected("https://kiroween.devpost.com/")));
+    await expect(get("https://devpost.com/api/hackathons")).resolves.toBeInstanceOf(Response);
+  });
+
   it("reads the winners of a saved gallery page", () => {
     const tiles = parseGallery(fixture("devpost-gallery.html"));
     expect(tiles).toHaveLength(24);
@@ -80,10 +98,40 @@ describe("pre-submission check", () => {
     const items = await checkSubmission({ project, tasks, prizeTracks: [{ entering: false }] });
     expect(byKey(items)).toEqual({ repo: false, readme: false, video: false, demo: false, checklist: false, tracks: false });
     expect(items.find((i) => i.key === "checklist")?.detail).toBe("1 left: Write the README");
-    expect(items.find((i) => i.key === "demo")?.detail).toMatch(/Didn't respond/);
+    expect(items.find((i) => i.key === "demo")?.detail).toMatch(/Couldn't connect/);
 
     const none = await checkSubmission({ project: null, tasks: [], prizeTracks: [] });
     expect(none.every((i) => i.ok === false)).toBe(true);
+  });
+
+  it("never fetches a link that points into this computer or its network", async () => {
+    for (const url of ["http://127.0.0.1:4000/health", "http://[::1]/", "http://[::ffff:127.0.0.1]/", "http://169.254.169.254/latest", "http://192.168.1.1", "http://intranet.test/admin"]) {
+      expect(await pointsInward(url)).toBe(true);
+    }
+    expect(await pointsInward("https://app.example.com")).toBe(false);
+
+    const fetch = vi.fn(async () => new Response(""));
+    vi.stubGlobal("fetch", fetch);
+    const items = await checkSubmission({ project: { repoUrl: null, demoUrl: "http://intranet.test/admin", videoUrl: "http://169.254.169.254/" }, tasks: [], prizeTracks: [] });
+    expect(items.find((i) => i.key === "demo")).toMatchObject({ ok: false, detail: expect.stringMatching(/private address/) });
+    expect(items.find((i) => i.key === "video")).toMatchObject({ ok: false, detail: expect.stringMatching(/private address/) });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a private address at connect time too, so a name can't switch answers after the check", async () => {
+    const connect = (host: string) => new Promise<unknown>((resolve) => guardedLookup(host, {}, (err, address) => resolve(err ? (err as NodeJS.ErrnoException).code : address)));
+    expect(await connect("intranet.test")).toBe("EPRIVATE");
+    expect(await connect("app.example.com")).toBe("93.184.216.34");
+  });
+
+  it("says a slow link timed out, and a dead one couldn't connect", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("slow")) throw new DOMException("The operation timed out.", "TimeoutError");
+      throw new TypeError("fetch failed");
+    }));
+    const items = await checkSubmission({ project: { repoUrl: null, demoUrl: "https://slow.example.com", videoUrl: "https://dead.example.com" }, tasks: [], prizeTracks: [] });
+    expect(items.find((i) => i.key === "demo")?.detail).toMatch(/within 10 seconds/);
+    expect(items.find((i) => i.key === "video")?.detail).toMatch(/Couldn't connect/);
   });
 
   it("fails a short README, and can't tell for a repo off GitHub or when GitHub's limit is hit", async () => {
@@ -103,12 +151,13 @@ describe("pre-submission check", () => {
 describe("intel endpoints", () => {
   let app: INestApplication;
   let db: PrismaService;
-  const http = () => request(app.getHttpServer());
+  let http: Awaited<ReturnType<typeof signedIn>>["http"];
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = await mod.createNestApplication().init();
     db = app.get(PrismaService);
+    http = (await signedIn(app, db)).http;
   });
   afterAll(() => app.close());
   beforeEach(async () => {

@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { BoardDto, CategoryDto, MemberDto } from "@hackops/shared";
@@ -47,6 +48,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       api<MemberDto[]>("/members"),
     ]);
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     error = e instanceof ApiError ? e.message : "Couldn't load the board.";
   }
   const filtered = Boolean(s.category || s.owner || s.region || s.mode || s.week);

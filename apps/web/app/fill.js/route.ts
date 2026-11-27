@@ -1,12 +1,11 @@
 import { matchField, type ProfileKey, type SignupProfileDto } from "@hackops/shared";
-import { API_URL } from "@/lib/api";
 
 /**
  * The sign-up bookmarklet's script. The bookmarklet is a one-line loader that injects this from the local web app,
  * so changes here reach it without re-installing. It fills fields for a person to review and never submits.
  */
 export function GET() {
-  const body = `(${fill})((${matchField}), ${JSON.stringify(API_URL)});`;
+  const body = `(${fill})((${matchField}));`;
   return new Response(body, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" } });
 }
 
@@ -14,8 +13,10 @@ export function GET() {
  * Runs on the registration page. Shipped as source text, so it may only use its arguments and browser globals.
  * Everything it shows goes through textContent: names and errors come from outside this page.
  */
-function fill(match: (hints: string) => ProfileKey | null, apiUrl: string) {
-  const token = new URL((document.currentScript as HTMLScriptElement).src).searchParams.get("t") ?? "";
+function fill(match: (hints: string) => ProfileKey | null) {
+  // The profile comes from the same HackOps address this script did, which passes it on to the API.
+  const src = new URL((document.currentScript as HTMLScriptElement).src);
+  const token = src.searchParams.get("t") ?? "";
   document.getElementById("hackops-fill")?.remove();
 
   const host = document.createElement("div");
@@ -56,7 +57,7 @@ function fill(match: (hints: string) => ProfileKey | null, apiUrl: string) {
   root.addEventListener("keydown", (e) => (e as KeyboardEvent).key === "Escape" && host.remove());
   document.documentElement.appendChild(host);
 
-  fetch(`${apiUrl}/signup-profile?token=${encodeURIComponent(token)}`)
+  fetch(`${src.origin}/signup-profile?token=${encodeURIComponent(token)}`)
     .then(async (res) => {
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.message ?? `HackOps answered ${res.status}.`);
@@ -64,7 +65,7 @@ function fill(match: (hints: string) => ProfileKey | null, apiUrl: string) {
     })
     .then((profile) => {
       status.textContent = "Who is filling this form?";
-      for (const m of [...profile.members, null]) {
+      for (const m of [profile.member, null]) {
         const b = el("button", m ? m.name : `Team only (${profile.team.name})`, who);
         b.type = "button";
         b.onclick = () => run(profile, m);
@@ -77,7 +78,7 @@ function fill(match: (hints: string) => ProfileKey | null, apiUrl: string) {
         : (e as Error).message;
     });
 
-  function run(profile: SignupProfileDto, m: SignupProfileDto["members"][number] | null) {
+  function run(profile: SignupProfileDto, m: SignupProfileDto["member"] | null) {
     const [first, ...rest] = (m?.name ?? "").trim().split(/\s+/);
     const values: Partial<Record<ProfileKey, string | null>> = { teamName: profile.team.name, pitch: profile.team.pitch };
     if (m) {

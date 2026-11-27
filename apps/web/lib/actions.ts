@@ -1,9 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { redirect } from "next/navigation";
-import type { HackathonResult, MemberInput, PrizeTrack, ProjectInput, Stage, TeamInput } from "@hackops/shared";
-import { api, ApiError } from "@/lib/api";
+import { redirect, unstable_rethrow } from "next/navigation";
+import type { HackathonResult, MemberInput, PrizeTrack, ProjectInput, SessionDto, Stage, TeamInput, TwoStepSetupDto } from "@hackops/shared";
+import { cookies, headers } from "next/headers";
+import { api, ApiError, SESSION_COOKIE } from "@/lib/api";
 
 export type MoveResult = { error?: string };
 
@@ -21,6 +22,7 @@ export async function moveCard(id: string, stage: Stage, opts: { result?: Hackat
     }
     await api(`${path}/stage`, { method: "POST", body: JSON.stringify({ stage, result: opts.result, note }) });
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     return { error: e instanceof ApiError ? e.message : "The move didn't save." };
   }
   refresh();
@@ -35,6 +37,7 @@ async function write(fn: () => Promise<unknown>, failed: string): Promise<MoveRe
     await fn();
     return {};
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     return { error: e instanceof ApiError ? e.message : failed };
   } finally {
     refresh();
@@ -71,8 +74,9 @@ export async function saveTeam(id: string, team: Assignment[]) {
   }, "The team didn't save.");
 }
 
-export async function addNote(id: string, text: string, memberId: string | null) {
-  return write(() => api(`${hack(id)}/notes`, { method: "POST", body: JSON.stringify({ text, memberId }) }), "The note didn't save.");
+/** The note is written as the signed-in member. */
+export async function addNote(id: string, text: string) {
+  return write(() => api(`${hack(id)}/notes`, { method: "POST", body: JSON.stringify({ text }) }), "The note didn't save.");
 }
 
 export async function linkProject(id: string, projectId: string | null) {
@@ -148,9 +152,9 @@ export async function saveTeamProfile(fields: TeamInput): Promise<MoveResult> {
   return write(() => api("/team", { method: "PUT", body: JSON.stringify(fields) }), "The team profile didn't save.");
 }
 
-/** Make a new bookmarklet secret; the old bookmarklet stops working. */
+/** Make a new secret for your own bookmarklet and calendar link; old ones stop working. */
 export async function newFillToken(): Promise<MoveResult> {
-  return write(() => api("/team/fill-token", { method: "POST" }), "The bookmarklet wasn't made.");
+  return write(() => api("/auth/fill-token", { method: "POST" }), "The bookmarklet wasn't made.");
 }
 
 /** Replace the hackathon's prize tracks (typed, edited, entering marks). */
@@ -167,4 +171,83 @@ export async function importTracks(id: string) {
 /** Re-render the page, which runs the pre-submission check again. */
 export async function recheck() {
   refresh();
+}
+
+/** Only a path inside this app: `/board`, never `//evil.example` or a full URL. */
+const safeNext = (next: unknown) =>
+  typeof next === "string" && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/board";
+
+export type LoginState = MoveResult & { needCode?: boolean };
+
+/**
+ * Sign in: the API checks the password, then the authenticator code if the member turned two-step on.
+ * The session token lives only in an httpOnly cookie.
+ */
+export async function login(_: LoginState, fd: FormData): Promise<LoginState> {
+  let session: SessionDto;
+  try {
+    // The API also limits failed sign-ins per browser address. The last x-forwarded-for entry is the one the nearest
+    // proxy added (Next adds the socket address when there's none); earlier entries are whatever the browser sent.
+    const address = (await headers()).get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "";
+    const code = String(fd.get("code") ?? "").trim() || undefined;
+    session = await api<SessionDto>("/auth/login", {
+      method: "POST",
+      headers: { "x-client-address": address },
+      body: JSON.stringify({ email: fd.get("email"), password: fd.get("password"), code }),
+    });
+  } catch (e) {
+    if (!(e instanceof ApiError)) return { error: "Couldn't sign in." };
+    return { error: e.message, needCode: e.code === "two_step" };
+  }
+  (await cookies()).set(SESSION_COOKIE, session.token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: (process.env.SITE_URL ?? "").startsWith("https:"),
+    path: "/",
+    expires: new Date(session.expiresAt),
+  });
+  redirect(safeNext(fd.get("next")));
+}
+
+export async function logout() {
+  try {
+    await api("/auth/logout", { method: "POST" });
+  } catch (e) {
+    unstable_rethrow(e); // already signed out: fine
+  }
+  (await cookies()).delete(SESSION_COOKIE);
+  redirect("/login");
+}
+
+/** Change your own password; your other sessions are signed out. */
+export async function changePassword(_: MoveResult & { done?: boolean }, fd: FormData): Promise<MoveResult & { done?: boolean }> {
+  const next = String(fd.get("next") ?? "");
+  if (next.length < 10) return { error: "Use at least 10 characters for the new password." };
+  if (next !== fd.get("confirm")) return { error: "The new passwords don't match." };
+  try {
+    await api("/auth/password", { method: "POST", body: JSON.stringify({ current: fd.get("current"), next }) });
+  } catch (e) {
+    unstable_rethrow(e);
+    return { error: e instanceof ApiError ? e.message : "The password didn't change." };
+  }
+  return { done: true };
+}
+
+/** A fresh authenticator key to show; nothing is saved until a code from it comes back. */
+export async function startTwoStep(): Promise<MoveResult & Partial<TwoStepSetupDto>> {
+  try {
+    return await api<TwoStepSetupDto>("/auth/two-step/setup", { method: "POST" });
+  } catch (e) {
+    unstable_rethrow(e);
+    return { error: e instanceof ApiError ? e.message : "Couldn't make a key." };
+  }
+}
+
+/** Turn two-step sign-in on (with `secret`) or off (without): both need your password and a current code. */
+export async function setTwoStep(_: MoveResult, fd: FormData): Promise<MoveResult> {
+  const secret = fd.get("secret") ? String(fd.get("secret")) : undefined;
+  return write(
+    () => api(secret ? "/auth/two-step" : "/auth/two-step/off", { method: "POST", body: JSON.stringify({ password: fd.get("password"), code: fd.get("code"), secret }) }),
+    "Two-step sign-in didn't change.",
+  );
 }

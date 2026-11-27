@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { cache } from "react";
-import type { MemberDetailDto } from "@hackops/shared";
+import type { MeDto, MemberDetailDto } from "@hackops/shared";
 import { PageHeader } from "@/components/shell/page-header";
 import { api, ApiError } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/format";
 import { ResultSquare } from "@/components/result";
 import { MYT } from "@/lib/time";
 import { MemberForm } from "../member-form";
+import { PasswordForm } from "./password-form";
+// import { TwoStepForm } from "./two-step-form"; // two-step sign-in is off for now; see the member page below
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -16,6 +18,7 @@ const getMember = cache(async (id: string) => {
   try {
     return await api<MemberDetailDto>(`/members/${encodeURIComponent(id)}`);
   } catch (e) {
+    unstable_rethrow(e); // let the sign-in redirect through
     if (e instanceof ApiError && e.status === 404) notFound();
     throw e;
   }
@@ -26,13 +29,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function MemberPage({ params }: Props) {
-  const m = await getMember((await params).id);
+  const [m, me] = await Promise.all([getMember((await params).id), api<MeDto>("/auth/me")]);
   return (
     <>
       <PageHeader title={m.name} />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,48rem)_minmax(260px,340px)] lg:items-start">
         <MemberForm key={m.id} member={m} />
-        <History m={m} />
+        <div className="flex flex-col gap-5">
+          <History m={m} />
+          {me.id === m.id && <PasswordForm />}
+          {/* Two-step sign-in is off for now: HackOps holds little worth a second factor, and codes are a hassle.
+              To bring it back, uncomment this line and the TwoStepForm import; the API, the sign-in form and
+              set-password already handle it. */}
+          {/* {me.id === m.id && <TwoStepForm key={String(me.twoStep)} on={me.twoStep} />} */}
+        </div>
       </div>
     </>
   );

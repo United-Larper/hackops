@@ -1,4 +1,3 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
 import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Put, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import {
@@ -6,6 +5,7 @@ import {
   type HackathonResult, type MemberDetailDto, type ProjectDetailDto, type SignupProfileDto, type ProjectSummaryDto, type Role, type Stage, type TeamWorkloadDto,
 } from "@hackops/shared";
 import { z } from "zod";
+import { fillTokenOwner } from "./auth";
 import { ZodPipe } from "./common/zod.pipe";
 import { newest, toMemberDto, toProjectDto, toTeamDto } from "./mappers";
 import { PrismaService } from "./prisma.service";
@@ -139,29 +139,27 @@ export class TeamController {
     return toTeamDto(await this.db.team.upsert({ where: { id: "team" }, create: data, update: data }));
   }
 
-  /** Makes a new bookmarklet secret; a bookmarklet made with the old one stops working. Needs the team row (PUT /team). */
-  @Post("team/fill-token")
-  async rotateFillToken() {
-    return toTeamDto(await this.db.team.update({ where: { id: "team" }, data: { fillToken: randomBytes(24).toString("base64url") } }));
-  }
-
   /**
    * The bookmarklet reads this from third-party registration pages, so it is the one route open to any origin.
-   * Member ids are public (the portfolio), hence the token; and it returns sign-up fields only.
+   * The token is one member's own secret (POST /auth/fill-token), and it returns that member's sign-up fields only:
+   * the page sees them anyway once they're filled.
    */
   @Get("signup-profile")
   async signupProfile(@Query("token") token: unknown, @Res({ passthrough: true }) res: Response): Promise<SignupProfileDto> {
     res.setHeader("Access-Control-Allow-Origin", "*"); // set before any throw, so fill.js can read the 404 too
-    const team = await this.db.team.findUnique({ where: { id: "team" } });
-    const same = (a: Buffer, b: Buffer) => a.length === b.length && timingSafeEqual(a, b);
-    if (typeof token !== "string" || !team?.fillToken || !same(Buffer.from(team.fillToken), Buffer.from(token))) {
-      throw new NotFoundException("This bookmarklet is out of date. Drag the new one from HackOps Settings.");
-    }
-    const members = await this.db.member.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, email: true, githubUrl: true, linkedinUrl: true, organisation: true, tshirtSize: true, dietary: true },
-    });
-    return { team: { name: team.name, pitch: team.pitch }, members };
+    const memberId = await fillTokenOwner(this.db, token);
+    const [team, owner] = await Promise.all([
+      this.db.team.findUnique({ where: { id: "team" }, select: { name: true, pitch: true } }),
+      memberId
+        ? this.db.member.findUnique({
+            where: { id: memberId },
+            select: { name: true, email: true, githubUrl: true, linkedinUrl: true, organisation: true, tshirtSize: true, dietary: true },
+          })
+        : null,
+    ]);
+    if (!owner) throw new NotFoundException("This bookmarklet is out of date. Drag the new one from HackOps Settings.");
+    if (!team) throw new NotFoundException("Fill in the team profile in HackOps Settings first.");
+    return { team, member: owner };
   }
 
   @Get("categories")

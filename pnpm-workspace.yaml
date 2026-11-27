@@ -10,3 +10,7 @@ onlyBuiltDependencies:
   - "@swc/core"
   - esbuild
   - sharp
+
+# Security: effect <=3.22.0 has a ReDoS (GHSA-7589-6fvf-x4pw); it comes in through Prisma's config loader. Drop once Prisma ships a fixed version.
+overrides:
+  effect: "^3.22.1"
