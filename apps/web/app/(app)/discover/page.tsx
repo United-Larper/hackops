@@ -166,7 +166,11 @@ function Row({ h, now, briefs }: { h: HackathonDto; now: Date; briefs: Record<st
           {[h.organizer, place, SOURCE[h.source] ?? h.source].filter(Boolean).join(" · ")}
         </p>
         {h.fit && h.fit.reasons.length > 0 && <p className="mt-1 text-[13px]">{h.fit.reasons.join(" · ")}</p>}
+        {summaryOf(h.eligibility) && <p className="mt-1 line-clamp-2 text-[13px] leading-snug">{summaryOf(h.eligibility)}</p>}
         <WinsLine h={h} briefs={briefs} />
+        <Link href={`/h/${h.id}`} className="mt-1 inline-flex min-h-6 items-center text-[13px] font-medium underline">
+          Details
+        </Link>
         {h.categories.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Categories">
             {h.categories.map((c) => (
@@ -213,6 +217,9 @@ function Row({ h, now, briefs }: { h: HackathonDto; now: Date; briefs: Record<st
     </li>
   );
 }
+
+/** The "Summary: …" line of a curated-list entry (scripts/tracker-to-list.mjs); scraped events have none. */
+const summaryOf = (eligibility: string | null) => eligibility?.match(/^Summary: (.+)$/m)?.[1] ?? null;
 
 /**
  * "What wins here" in one line. Discover only shows briefs already fetched (a brief costs about 20 Devpost requests),
