@@ -28,3 +28,6 @@ Check: deploy the Blueprint, sign in, open the calendar link from Settings.
 
 - Two Neon branches only (`prod`, `dev`): the tests share `dev` but stay in their own `test` schema, so a run never touches dev data.
 - Render's build installs pnpm with `npm install -g pnpm@10.34.7`; Node 26 dropped corepack, so locally use `npx pnpm@10.34.7` or install pnpm.
+- 13.2 is built but not yet checked on a real deploy: it stays unticked until the Blueprint is deployed, sign-in works and the calendar link from Settings opens. Then note here which header carries the browser's address, for `CLIENT_ADDRESS_HEADER`.
+- No SQLite data carried over: no one had real rows in `dev.db`, so `prod` starts fresh (add members, then `set-password`).
+- Title search uses `mode: "insensitive"`, keeping SQLite's case-insensitive `LIKE` behaviour on Postgres.

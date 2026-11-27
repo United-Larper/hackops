@@ -133,4 +133,4 @@ Concretely:
 
 ### 13 Render and Neon
 - [x] 13.1 Postgres on Neon (tests in a `test` schema of dev, CI on a Postgres container)
-- [x] 13.2 One Render service for both apps (`render.yaml`, `scripts/start-hosted.mjs`)
+- [ ] 13.2 One Render service for both apps (`render.yaml`, `scripts/start-hosted.mjs`)
