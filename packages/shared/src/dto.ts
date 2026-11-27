@@ -93,6 +93,7 @@ export type MemberDto = {
   email: string | null;
   githubUrl: string | null;
   linkedinUrl: string | null;
+  portfolioUrl: string | null;
   skills: string[];
   preferredRoles: Role[];
   organisation: string | null;
@@ -141,7 +142,7 @@ export type TeamDto = { name: string; pitch: string | null };
  */
 export type SignupProfileDto = {
   team: { name: string; pitch: string | null };
-  member: { name: string; email: string | null; githubUrl: string | null; linkedinUrl: string | null; organisation: string | null; tshirtSize: string | null; dietary: string | null };
+  member: { name: string; email: string | null; githubUrl: string | null; linkedinUrl: string | null; portfolioUrl: string | null; organisation: string | null; tshirtSize: string | null; dietary: string | null };
 };
 
 /** POST /auth/login. The token goes in the web app's httpOnly cookie; the API keeps only its hash. */

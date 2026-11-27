@@ -135,6 +135,7 @@ export const MemberInput = z.object({
   email: z.email().max(200).toLowerCase().nullish(), // the login; lowercased so sign-in ignores case
   githubUrl: optionalUrl,
   linkedinUrl: optionalUrl,
+  portfolioUrl: optionalUrl,
   skills: tags.default([]),
   preferredRoles: z.array(z.enum(ROLES)).max(4).default([]),
   organisation: optionalText(200),

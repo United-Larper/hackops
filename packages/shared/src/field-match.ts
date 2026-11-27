@@ -1,6 +1,6 @@
 /** A sign-up profile value a registration form field can ask for. */
 export type ProfileKey =
-  | "teamName" | "pitch" | "email" | "github" | "linkedin" | "tshirt" | "dietary"
+  | "teamName" | "pitch" | "email" | "github" | "linkedin" | "portfolio" | "tshirt" | "dietary"
   | "organisation" | "firstName" | "lastName" | "fullName";
 
 /**
@@ -21,6 +21,7 @@ export function matchField(hints: string): ProfileKey | null {
     ["email", /\be ?mail\b/],
     ["github", /\bgit ?hub\b/],
     ["linkedin", /\blinked ?in\b/],
+    ["portfolio", /\bportfolio\b|\bpersonal (web ?site|site|page)\b/],
     ["tshirt", /\bt ?shirt|\bshirt\b|\btee size\b/],
     ["dietary", /\bdiet|\bfood\b|\ballerg|\bmeal/],
     ["organisation", /universit|college|\bschool|institut|organi[sz]ation|\borg\b|company|employer|affiliation|workplace/],
