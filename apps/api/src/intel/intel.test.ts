@@ -105,7 +105,7 @@ describe("pre-submission check", () => {
   });
 
   it("never fetches a link that points into this computer or its network", async () => {
-    for (const url of ["http://127.0.0.1:4000/health", "http://[::1]/", "http://[::ffff:127.0.0.1]/", "http://169.254.169.254/latest", "http://192.168.1.1", "http://intranet.test/admin"]) {
+    for (const url of ["http://127.0.0.1:4000/health", "http://[::1]/", "http://[::ffff:127.0.0.1]/", "http://169.254.169.254/latest", "http://192.168.1.1", "http://intranet.test/admin", "http://[64:ff9b::7f00:1]/", "http://[2002:7f00:1::]/", "http://198.18.0.1/"]) {
       expect(await pointsInward(url)).toBe(true);
     }
     expect(await pointsInward("https://app.example.com")).toBe(false);

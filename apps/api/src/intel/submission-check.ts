@@ -23,14 +23,19 @@ type Input = {
 };
 
 
-/** Loopback, private, link-local (cloud metadata), carrier-grade NAT and unique-local ranges: never fetched. */
+/**
+ * Loopback, private, link-local (cloud metadata), carrier-grade NAT, benchmarking and unique-local ranges: never
+ * fetched. Also NAT64 and 6to4, IPv6 addresses that carry an IPv4 one and can reach it on a network that translates.
+ */
 const PRIVATE = new BlockList();
 const inward = (a: { address: string; family: number }) => PRIVATE.check(a.address, a.family === 6 ? "ipv6" : "ipv4");
-for (const [net, bits] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.168.0.0", 16]] as const) {
+for (const [net, bits] of [
+  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.168.0.0", 16], ["198.18.0.0", 15],
+] as const) {
   PRIVATE.addSubnet(net, bits, "ipv4");
 }
 // BlockList matches IPv4-mapped IPv6 (::ffff:127.0.0.1) against the IPv4 rules itself.
-for (const [net, bits] of [["::", 127], ["fc00::", 7], ["fe80::", 10]] as const) PRIVATE.addSubnet(net, bits, "ipv6");
+for (const [net, bits] of [["::", 127], ["fc00::", 7], ["fe80::", 10], ["64:ff9b::", 96], ["2002::", 16]] as const) PRIVATE.addSubnet(net, bits, "ipv6");
 
 /**
  * Whether a stored link points into this computer or its network. Demo and video links are typed by people and
